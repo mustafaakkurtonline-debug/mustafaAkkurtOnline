@@ -101,7 +101,7 @@ export function AboutPage() {
           <MapPinIcon />
           <div>
             <p className="text-gray-800 text-sm font-medium">Mustafa Akkurt Berberi</p>
-            <p className="text-gray-400 text-sm mt-0.5">Adres bilgisi güncelleniyor…</p>
+            <p className="text-gray-500 text-sm mt-0.5">Yayla, Seyitler Cd 29/A, 06020 Keçiören/Ankara</p>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-const PHONE = '05XX XXX XX XX'  // placeholder — update with real number
+const PHONE = '0507 873 19 10'
 
 function buildWhatsAppLink(phone: string, message: string): string {
   const normalized = phone.replace(/\D/g, '')
@@ -58,7 +58,7 @@ export function ContactPage() {
           <div>
             <p className="text-gray-400 text-xs mb-0.5">Adres</p>
             <p className="text-gray-900 font-semibold">Mustafa Akkurt Berberi</p>
-            <p className="text-gray-500 text-sm mt-0.5">Adres bilgisi güncelleniyor…</p>
+            <p className="text-gray-500 text-sm mt-0.5">Yayla, Seyitler Cd 29/A, 06020 Keçiören/Ankara</p>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CustomerLayout } from '@/components/layout/CustomerLayout/CustomerLayout'
 import { BottomNav } from '@/components/layout/BottomNav/BottomNav'
 import type { CustomerTab } from '@/components/layout/BottomNav/BottomNav'
@@ -8,12 +9,16 @@ import { ContactPage } from '@/features/customer/ContactPage/ContactPage'
 import { MyAccountPage } from '@/features/customer/MyAccountPage/MyAccountPage'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
 
+function isInStandaloneMode(): boolean {
+  return window.matchMedia('(display-mode: standalone)').matches
+}
+
 function InstallBanner() {
   const { canInstall, promptInstall } = usePWAInstall()
   const [dismissed, setDismissed] = useState(false)
   const [installing, setInstalling] = useState(false)
 
-  if (!canInstall || dismissed) return null
+  if (dismissed || isInStandaloneMode()) return null
 
   const handleInstall = async () => {
     setInstalling(true)
@@ -34,14 +39,23 @@ function InstallBanner() {
         <p className="text-white text-sm font-semibold leading-tight">Uygulamayı Yükle</p>
         <p className="text-gray-400 text-xs mt-0.5">Ana ekrana ekle, tek dokunuşla aç</p>
       </div>
-      <button
-        type="button"
-        onClick={() => { void handleInstall() }}
-        disabled={installing}
-        className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg shrink-0 active:scale-95 transition-transform disabled:opacity-50 cursor-pointer"
-      >
-        {installing ? '…' : 'Yükle'}
-      </button>
+      {canInstall ? (
+        <button
+          type="button"
+          onClick={() => { void handleInstall() }}
+          disabled={installing}
+          className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg shrink-0 active:scale-95 transition-transform disabled:opacity-50 cursor-pointer"
+        >
+          {installing ? '…' : 'Yükle'}
+        </button>
+      ) : (
+        <Link
+          to="/install"
+          className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg shrink-0 active:scale-95 transition-transform cursor-pointer"
+        >
+          Nasıl Kurulur?
+        </Link>
+      )}
       <button
         type="button"
         onClick={() => { setDismissed(true) }}
