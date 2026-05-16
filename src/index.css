@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@keyframes fade-in {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+@theme {
+  --animate-fade-in: fade-in 0.18s ease-out both;
+  --animate-slide-up: slide-up 0.22s ease-out both;
+
+  /* ── Gold accent scale (centered on #CA8A04) ── */
+  --color-brand-50:  #FFFBEB;
+  --color-brand-100: #FEF3C7;
+  --color-brand-200: #FDE68A;
+  --color-brand-300: #FCD34D;
+  --color-brand-400: #E9A812;
+  --color-brand-500: #CA8A04;
+  --color-brand-600: #A16207;
+  --color-brand-700: #854D0E;
+  --color-brand-800: #713F12;
+  --color-brand-900: #5A3007;
+
+  /* ── Surface — warm stone scale ── */
+  --color-surface-50:  #FAFAF9;
+  --color-surface-100: #F5F4F2;
+  --color-surface-200: #E7E5E4;
+  --color-surface-300: #D6D3D1;
+  --color-surface-400: #A8A29E;
+  --color-surface-500: #57534E;
+  --color-surface-600: #44403C;
+  --color-surface-700: #292524;
+  --color-surface-800: #1C1917;
+  --color-surface-900: #0C0A09;
+
+  /* ── Ink — text on dark surfaces ── */
+  --color-ink-primary:   #F5F0E8;
+  --color-ink-secondary: #C4B89A;
+  --color-ink-muted:     #78716C;
+
+  /* ── Status ── */
+  --color-status-pending:   #CA8A04;
+  --color-status-confirmed: #16A34A;
+  --color-status-completed: #57534E;
+  --color-status-no_show:   #DC2626;
+  --color-status-noshow:    #DC2626;
+
+  /* ── Typography ── */
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans:  'Inter', system-ui, sans-serif;
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+}
