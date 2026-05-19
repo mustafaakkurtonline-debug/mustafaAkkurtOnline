@@ -6,6 +6,18 @@ interface ServiceStepProps {
   onSelect: (service: Service) => void
 }
 
+function ScissorsIcon({ size = 22, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <line x1="20" y1="4" x2="8.12" y2="15.88" />
+      <line x1="14.47" y1="14.48" x2="20" y2="20" />
+      <line x1="8.12" y1="8.12" x2="12" y2="12" />
+    </svg>
+  )
+}
+
 export function ServiceStep({ onSelect }: ServiceStepProps) {
   const { services, isLoading, error } = useServices()
 
@@ -48,12 +60,8 @@ export function ServiceStep({ onSelect }: ServiceStepProps) {
             style={{ animationDelay: `${index * 55}ms` }}
           >
             <div className="bg-white border border-gray-100 rounded-2xl px-4 py-4 flex items-center gap-4 hover:border-brand-200 hover:shadow-md active:scale-[0.97] transition-all duration-150 shadow-sm">
-              <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0">
-                <img
-                  src="/icons/mustafaAkkurthair.png"
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-14 h-14 rounded-xl bg-surface-100 flex items-center justify-center shrink-0">
+                <ScissorsIcon size={24} className="text-surface-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-gray-900 font-semibold text-base">{service.name}</p>
