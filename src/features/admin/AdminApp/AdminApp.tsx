@@ -12,6 +12,9 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+
 function CalendarIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,6 +56,7 @@ const TABS: { id: AdminTab; label: string; Icon: () => React.ReactElement }[] = 
 export function AdminApp() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard')
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [showIOSGuide, setShowIOSGuide] = useState(false)
   const navigate = useNavigate()
 
   useAdminNotifications()
@@ -99,6 +103,7 @@ export function AdminApp() {
           <h1 className="font-serif text-brand-500 font-semibold text-lg tracking-wide">Mustafa Akkurt</h1>
         </div>
         <div className="flex items-center gap-3">
+          {/* Android / Chrome: native install prompt */}
           {installPrompt !== null && (
             <button
               type="button"
@@ -106,6 +111,16 @@ export function AdminApp() {
               className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
             >
               Uygulamayı Kur
+            </button>
+          )}
+          {/* iOS Safari (not yet in standalone): show manual guide */}
+          {isIOS && !isStandalone && (
+            <button
+              type="button"
+              onClick={() => { setShowIOSGuide(true) }}
+              className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
+            >
+              Ana Ekrana Ekle
             </button>
           )}
           <button
@@ -117,6 +132,50 @@ export function AdminApp() {
           </button>
         </div>
       </header>
+
+      {/* iOS install guide modal */}
+      {showIOSGuide && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4"
+          onClick={() => { setShowIOSGuide(false) }}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            onClick={(e) => { e.stopPropagation() }}
+          >
+            <h2 className="font-bold text-gray-900 text-lg mb-1">Admin Panelini Kur</h2>
+            <p className="text-gray-500 text-sm mb-5">Safari'den ana ekrana ekleyin:</p>
+            <ol className="space-y-4">
+              <li className="flex gap-3 items-start">
+                <span className="bg-brand-50 text-brand-600 font-bold text-sm w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span className="text-gray-700 text-sm">
+                  Safari'nin altındaki <strong>Paylaş</strong> butonuna dokunun
+                  <span className="block text-gray-400 text-xs mt-0.5">(kutu içinde yukarı ok)</span>
+                </span>
+              </li>
+              <li className="flex gap-3 items-start">
+                <span className="bg-brand-50 text-brand-600 font-bold text-sm w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span className="text-gray-700 text-sm">
+                  Listeden <strong>"Ana Ekrana Ekle"</strong>yi seçin
+                </span>
+              </li>
+              <li className="flex gap-3 items-start">
+                <span className="bg-brand-50 text-brand-600 font-bold text-sm w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span className="text-gray-700 text-sm">
+                  Sağ üstteki <strong>"Ekle"</strong>ye dokunun
+                </span>
+              </li>
+            </ol>
+            <button
+              type="button"
+              onClick={() => { setShowIOSGuide(false) }}
+              className="mt-6 w-full bg-gray-900 text-white py-3 rounded-xl font-semibold text-sm cursor-pointer"
+            >
+              Anladım
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="max-w-2xl mx-auto px-4 py-4">
