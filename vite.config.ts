@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 
 export default defineConfig({
   plugins: [
@@ -54,6 +55,35 @@ export default defineConfig({
         ],
       },
     }),
+    // After build: create admin.html from index.html with admin-specific manifest/meta.
+    // Vercel routes /admin/* to admin.html so iOS Safari reads the correct manifest
+    // at page load — before any JavaScript runs.
+    {
+      name: 'generate-admin-html',
+      apply: 'build',
+      closeBundle() {
+        const distIndex = resolve(__dirname, 'dist', 'index.html')
+        if (!existsSync(distIndex)) return
+        const adminHtml = readFileSync(distIndex, 'utf-8')
+          .replace(
+            /<link rel="manifest"[^>]*>/,
+            '<link rel="manifest" href="/admin-manifest.json">'
+          )
+          .replace(
+            /(<meta name="apple-mobile-web-app-title" content=")[^"]*(")/,
+            '$1MA Panel$2'
+          )
+          .replace(
+            /(<meta name="theme-color" content=")[^"]*(")/,
+            '$1#111827$2'
+          )
+          .replace(
+            '<title>Mustafa Akkurt Berberi</title>',
+            '<title>Admin Panel — Mustafa Akkurt</title>'
+          )
+        writeFileSync(resolve(__dirname, 'dist', 'admin.html'), adminHtml)
+      },
+    },
   ],
   resolve: {
     dedupe: ['react', 'react-dom'],

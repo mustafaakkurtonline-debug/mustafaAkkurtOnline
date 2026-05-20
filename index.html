@@ -24,20 +24,7 @@
     <title>Mustafa Akkurt Berberi</title>
   </head>
   <body>
-    <!-- Runs before React: swap manifest so the browser sees the correct PWA identity
-         for /admin/* routes before it evaluates install eligibility. -->
-    <script>
-      if (window.location.pathname.startsWith('/admin')) {
-        var el;
-        el = document.querySelector('link[rel="manifest"]');
-        if (el) el.href = '/admin-manifest.json';
-        el = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-        if (el) el.content = 'MA Panel';
-        el = document.querySelector('meta[name="theme-color"]');
-        if (el) el.content = '#111827';
-      }
-    </script>
-    <div id="root"></div>
+<div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

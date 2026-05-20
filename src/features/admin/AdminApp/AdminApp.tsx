@@ -61,15 +61,6 @@ export function AdminApp() {
 
   useAdminNotifications()
 
-  // Swap manifest to admin-specific one so browser offers a separate install
-  useEffect(() => {
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
-    if (!link) return
-    const previous = link.href
-    link.href = '/admin-manifest.json'
-    return () => { link.href = previous }
-  }, [])
-
   // Capture install prompt before it disappears
   useEffect(() => {
     const handler = (e: Event): void => {
