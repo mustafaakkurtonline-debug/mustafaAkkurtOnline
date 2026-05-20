@@ -12,6 +12,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
+        id: '/',
         name: 'Mustafa Akkurt Berberi',
         short_name: 'M. Akkurt',
         description: 'Online randevu sistemi — Mustafa Akkurt Berberi',
