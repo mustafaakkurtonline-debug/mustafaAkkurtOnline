@@ -85,42 +85,44 @@ export function AdminApp() {
 
   return (
     <div className="min-h-screen bg-surface-50 text-gray-900 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 py-3.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-500 shrink-0">
-            <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
-            <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
-          </svg>
-          <h1 className="font-serif text-brand-500 font-semibold text-lg tracking-wide">Mustafa Akkurt</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Android / Chrome: native install prompt */}
-          {installPrompt !== null && (
+      <header className="bg-white border-b border-gray-200 shrink-0">
+        {/* Fills the iOS Dynamic Island / status bar area with header background */}
+        <div className="h-[env(safe-area-inset-top)]" />
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-brand-500 shrink-0">
+              <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+              <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" /><line x1="8.12" y1="8.12" x2="12" y2="12" />
+            </svg>
+            <h1 className="font-serif text-brand-500 font-semibold text-lg tracking-wide">Mustafa Akkurt</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {installPrompt !== null && (
+              <button
+                type="button"
+                onClick={() => { void handleInstall() }}
+                className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
+              >
+                Uygulamayı Kur
+              </button>
+            )}
+            {isIOS && !isStandalone && (
+              <button
+                type="button"
+                onClick={() => { setShowIOSGuide(true) }}
+                className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
+              >
+                Ana Ekrana Ekle
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => { void handleInstall() }}
-              className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
+              onClick={() => { void handleSignOut() }}
+              className="text-gray-400 text-sm hover:text-gray-700 transition-colors cursor-pointer"
             >
-              Uygulamayı Kur
+              Çıkış
             </button>
-          )}
-          {/* iOS Safari (not yet in standalone): show manual guide */}
-          {isIOS && !isStandalone && (
-            <button
-              type="button"
-              onClick={() => { setShowIOSGuide(true) }}
-              className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
-            >
-              Ana Ekrana Ekle
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => { void handleSignOut() }}
-            className="text-gray-400 text-sm hover:text-gray-700 transition-colors cursor-pointer"
-          >
-            Çıkış
-          </button>
+          </div>
         </div>
       </header>
 

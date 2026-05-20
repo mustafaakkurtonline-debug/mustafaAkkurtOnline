@@ -269,15 +269,18 @@ function SlotForm({ slot, onSuccess, onCancel }: SlotFormProps) {
             />
           </div>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.is_active}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => { update({ is_active: e.target.checked }) }}
-              className="w-4 h-4 accent-brand-500"
-            />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.is_active}
+              onClick={() => { update({ is_active: !form.is_active }) }}
+              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${form.is_active ? 'bg-brand-500' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${form.is_active ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </button>
             <span className="text-gray-600 text-sm">Aktif</span>
-          </label>
+          </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
