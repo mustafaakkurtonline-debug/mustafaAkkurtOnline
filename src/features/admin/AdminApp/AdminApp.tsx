@@ -1,10 +1,16 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import type { AdminTab } from '@/types/admin'
 import { DashboardTab } from '@/features/admin/tabs/DashboardTab/DashboardTab'
 import { ServicesTab } from '@/features/admin/tabs/ServicesTab/ServicesTab'
 import { SettingsTab } from '@/features/admin/tabs/SettingsTab/SettingsTab'
+import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
 
 function CalendarIcon() {
   return (
@@ -46,7 +52,36 @@ const TABS: { id: AdminTab; label: string; Icon: () => React.ReactElement }[] = 
 
 export function AdminApp() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard')
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const navigate = useNavigate()
+
+  useAdminNotifications()
+
+  // Swap manifest to admin-specific one so browser offers a separate install
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+    if (!link) return
+    const previous = link.href
+    link.href = '/admin-manifest.json'
+    return () => { link.href = previous }
+  }, [])
+
+  // Capture install prompt before it disappears
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      e.preventDefault()
+      setInstallPrompt(e as BeforeInstallPromptEvent)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => { window.removeEventListener('beforeinstallprompt', handler) }
+  }, [])
+
+  const handleInstall = async (): Promise<void> => {
+    if (!installPrompt) return
+    await installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    if (outcome === 'accepted') setInstallPrompt(null)
+  }
 
   const handleSignOut = async (): Promise<void> => {
     await supabase.auth.signOut()
@@ -63,13 +98,24 @@ export function AdminApp() {
           </svg>
           <h1 className="font-serif text-brand-500 font-semibold text-lg tracking-wide">Mustafa Akkurt</h1>
         </div>
-        <button
-          type="button"
-          onClick={() => { void handleSignOut() }}
-          className="text-gray-400 text-sm hover:text-gray-700 transition-colors cursor-pointer"
-        >
-          Çıkış
-        </button>
+        <div className="flex items-center gap-3">
+          {installPrompt !== null && (
+            <button
+              type="button"
+              onClick={() => { void handleInstall() }}
+              className="text-brand-500 text-sm font-medium hover:text-brand-400 transition-colors cursor-pointer"
+            >
+              Uygulamayı Kur
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { void handleSignOut() }}
+            className="text-gray-400 text-sm hover:text-gray-700 transition-colors cursor-pointer"
+          >
+            Çıkış
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-20">
