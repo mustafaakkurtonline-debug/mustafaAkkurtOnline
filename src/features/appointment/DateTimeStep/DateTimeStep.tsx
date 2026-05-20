@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAvailableSlots } from '@/hooks/useAvailableSlots'
-import { getTodayString, addDays, formatTime } from '@/utils/dateUtils'
+import { getTodayString, addDays } from '@/utils/dateUtils'
 import { MAX_BOOKING_DAYS } from '@/constants/appointment'
 import type { Service } from '@/types/appointment'
 
@@ -268,9 +268,8 @@ export function DateTimeStep({
           ) : (
             <div key={selectedDate} className="grid grid-cols-2 gap-2 animate-slide-up">
               {allSlots.map((slot) => {
-                const display = formatTime(slot)
-                const isSelected = slot === selectedTime || display === selectedTime
-                const isBooked = bookedSlots.has(slot) || bookedSlots.has(display)
+                const isBooked = bookedSlots.has(slot)
+                const isSelected = !isBooked && slot === selectedTime
                 return (
                   <button
                     key={slot}
@@ -278,17 +277,17 @@ export function DateTimeStep({
                     onClick={() => { if (!isBooked) onTimeChange(slot) }}
                     disabled={isBooked}
                     className={[
-                      'flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-medium transition-all duration-150 border',
+                      'flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-medium border transition-all duration-150',
                       isBooked
-                        ? 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed'
+                        ? 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed opacity-80'
                         : isSelected
                         ? 'bg-gray-900 text-white border-gray-900 active:scale-[0.97]'
                         : 'bg-white text-gray-800 border-gray-200 hover:border-gray-400 active:scale-[0.97]',
                     ].join(' ')}
                   >
                     <span className={`w-2 h-2 rounded-full shrink-0 ${isBooked ? 'bg-red-300' : isSelected ? 'bg-brand-400' : 'bg-brand-300'}`} />
-                    {display}
-                    {isBooked && <span className="text-xs font-bold text-red-400 ml-0.5">Dolu</span>}
+                    <span>{slot}</span>
+                    {isBooked && <span className="text-xs font-semibold">Dolu</span>}
                   </button>
                 )
               })}
