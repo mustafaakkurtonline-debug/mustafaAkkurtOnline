@@ -11,7 +11,20 @@ export function ContactPage() {
 
   return (
     <div className="pt-10 pb-4 space-y-5">
-      <h1 className="text-gray-900 text-2xl font-bold">İletişim</h1>
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <img
+          src="/icons/mustafaAkkurthair.png"
+          alt="Mustafa Akkurt"
+          className="w-16 h-16 rounded-2xl object-cover shadow-sm shrink-0"
+        />
+        <div>
+          <h1 className="font-serif text-gray-900 text-3xl font-bold tracking-tight leading-tight">
+            Mustafa Akkurt
+          </h1>
+          <p className="text-gray-400 text-sm mt-0.5">Online Randevu</p>
+        </div>
+      </div>
 
       {/* Phone */}
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">

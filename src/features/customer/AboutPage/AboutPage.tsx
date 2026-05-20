@@ -11,16 +11,6 @@ const WORKING_HOURS = [
   { day: 'Pazar', hours: 'Kapalı' },
 ]
 
-function ScissorsIcon() {
-  return (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="text-surface-500">
-      <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
-      <line x1="20" y1="4" x2="8.12" y2="15.88" />
-      <line x1="14.47" y1="14.48" x2="20" y2="20" />
-      <line x1="8.12" y1="8.12" x2="12" y2="12" />
-    </svg>
-  )
-}
 
 function MapPinIcon() {
   return (
@@ -51,14 +41,18 @@ export function AboutPage() {
 
   return (
     <div className="pt-10 pb-4 space-y-7">
-      {/* Profile */}
+      {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="w-20 h-20 rounded-2xl bg-surface-100 flex items-center justify-center shrink-0">
-          <ScissorsIcon />
-        </div>
+        <img
+          src="/icons/mustafaAkkurthair.png"
+          alt="Mustafa Akkurt"
+          className="w-16 h-16 rounded-2xl object-cover shadow-sm shrink-0"
+        />
         <div>
-          <h1 className="text-gray-900 text-2xl font-bold">Mustafa Akkurt</h1>
-          <p className="text-gray-400 text-sm mt-0.5 uppercase tracking-wider font-medium">Berberi</p>
+          <h1 className="font-serif text-gray-900 text-3xl font-bold tracking-tight leading-tight">
+            Mustafa Akkurt
+          </h1>
+          <p className="text-gray-400 text-sm mt-0.5">Online Randevu</p>
         </div>
       </div>
 
