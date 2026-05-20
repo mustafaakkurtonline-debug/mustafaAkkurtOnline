@@ -58,12 +58,8 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
 
       const slots = generateTimeSlots(wh.open_time, wh.close_time, durationMinutes)
 
-      const [{ data: appointments }, { data: reserved }] = await Promise.all([
-        supabase
-          .from('appointments')
-          .select('appointment_time')
-          .eq('appointment_date', date)
-          .in('status', ['pending', 'confirmed']),
+      const [{ data: bookedData }, { data: reserved }] = await Promise.all([
+        supabase.rpc('get_booked_slots', { p_date: date }),
         supabase
           .from('reserved_slots')
           .select('slot_time')
@@ -76,7 +72,7 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
       if (cancelled) return
 
       const booked = new Set([
-        ...(appointments ?? []).map(a => formatTime(a.appointment_time)),
+        ...(bookedData ?? []).map((r: { slot_time: string }) => formatTime(r.slot_time)),
         ...(reserved ?? []).map(r => formatTime(r.slot_time)),
       ])
 

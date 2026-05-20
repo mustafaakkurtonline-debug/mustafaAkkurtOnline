@@ -200,6 +200,10 @@ export interface Database {
         Args: { p_appointment_id: string; p_phone: string }
         Returns: boolean
       }
+      get_booked_slots: {
+        Args: { p_date: string }
+        Returns: { slot_time: string }[]
+      }
     }
     Enums: {
       appointment_status: AppointmentStatus
