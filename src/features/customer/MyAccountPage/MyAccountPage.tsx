@@ -245,6 +245,19 @@ export function MyAccountPage() {
           Randevularımı Göster
         </button>
       </form>
+
+      <div className="mt-8 pt-6 border-t border-gray-100">
+        <a
+          href="/admin/dashboard"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full border border-gray-200 text-gray-400 text-sm font-medium hover:border-gray-300 hover:text-gray-600 transition-colors cursor-pointer"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          Kuaför Girişi
+        </a>
+      </div>
     </div>
   )
 }
