@@ -4,6 +4,8 @@ import { jsToDbDayOfWeek, getJsDayOfWeek, generateTimeSlots, formatTime } from '
 
 interface UseAvailableSlotsReturn {
   availableSlots: string[]
+  allSlots: string[]
+  bookedSlots: Set<string>
   isLoading: boolean
 }
 
@@ -12,11 +14,15 @@ export function useAvailableSlots(
   durationMinutes: number,
 ): UseAvailableSlotsReturn {
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [allSlots, setAllSlots] = useState<string[]>([])
+  const [bookedSlots, setBookedSlots] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
   useEffect(() => {
     if (date === null) {
       setAvailableSlots([])
+      setAllSlots([])
+      setBookedSlots(new Set())
       return
     }
 
@@ -36,6 +42,8 @@ export function useAvailableSlots(
       if (cancelled) return
       if (blocked && blocked.length > 0) {
         setAvailableSlots([])
+        setAllSlots([])
+        setBookedSlots(new Set())
         setIsLoading(false)
         return
       }
@@ -50,12 +58,14 @@ export function useAvailableSlots(
       if (cancelled) return
       if (!wh || !wh.is_open) {
         setAvailableSlots([])
+        setAllSlots([])
+        setBookedSlots(new Set())
         setIsLoading(false)
         return
       }
 
       // 3. Generate all possible slots
-      const allSlots = generateTimeSlots(wh.open_time, wh.close_time, durationMinutes)
+      const slotList = generateTimeSlots(wh.open_time, wh.close_time, durationMinutes)
 
       // 4. Get booked appointments
       const { data: booked } = await supabase
@@ -79,8 +89,11 @@ export function useAvailableSlots(
       if (cancelled) return
       const reservedSet = new Set((reserved ?? []).map(r => formatTime(r.slot_time)))
 
-      const available = allSlots.filter(s => !bookedSet.has(s) && !reservedSet.has(s))
+      const bookedOrReserved = new Set([...bookedSet, ...reservedSet])
+      const available = slotList.filter(s => !bookedOrReserved.has(s))
 
+      setAllSlots(slotList)
+      setBookedSlots(bookedOrReserved)
       setAvailableSlots(available)
       setIsLoading(false)
     }
@@ -89,5 +102,5 @@ export function useAvailableSlots(
     return () => { cancelled = true }
   }, [date, durationMinutes])
 
-  return { availableSlots, isLoading }
+  return { availableSlots, allSlots, bookedSlots, isLoading }
 }

@@ -92,7 +92,7 @@ export function DateTimeStep({
   })
   const [showCalendar, setShowCalendar] = useState<boolean>(selectedDate === null)
 
-  const { availableSlots, isLoading } = useAvailableSlots(selectedDate, service.duration_minutes)
+  const { allSlots, bookedSlots, isLoading } = useAvailableSlots(selectedDate, service.duration_minutes)
 
   const weeks = buildCalendarGrid(calYear, calMonth, todayStr, maxDateStr)
 
@@ -128,9 +128,9 @@ export function DateTimeStep({
       <div className="flex items-center gap-3 mb-7">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => { if (!showCalendar && selectedDate !== null) { setShowCalendar(true) } else { onBack() } }}
           className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors shrink-0 shadow-sm"
-          aria-label="Geri"
+          aria-label={!showCalendar && selectedDate !== null ? 'Tarihe Dön' : 'Geri'}
         >
           ←
         </button>
@@ -261,29 +261,34 @@ export function DateTimeStep({
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : availableSlots.length === 0 ? (
+          ) : allSlots.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-400 text-sm">Bu gün için uygun saat yok.</p>
             </div>
           ) : (
             <div key={selectedDate} className="grid grid-cols-2 gap-2 animate-slide-up">
-              {availableSlots.map((slot) => {
+              {allSlots.map((slot) => {
                 const display = formatTime(slot)
                 const isSelected = slot === selectedTime || display === selectedTime
+                const isBooked = bookedSlots.has(slot) || bookedSlots.has(display)
                 return (
                   <button
                     key={slot}
                     type="button"
-                    onClick={() => { onTimeChange(slot) }}
+                    onClick={() => { if (!isBooked) onTimeChange(slot) }}
+                    disabled={isBooked}
                     className={[
-                      'flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-sm font-medium transition-all duration-150 active:scale-[0.97] border',
-                      isSelected
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'bg-white text-gray-800 border-gray-200 hover:border-gray-400',
+                      'flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-medium transition-all duration-150 border',
+                      isBooked
+                        ? 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed'
+                        : isSelected
+                        ? 'bg-gray-900 text-white border-gray-900 active:scale-[0.97]'
+                        : 'bg-white text-gray-800 border-gray-200 hover:border-gray-400 active:scale-[0.97]',
                     ].join(' ')}
                   >
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-brand-400' : 'bg-brand-300'}`} />
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${isBooked ? 'bg-red-300' : isSelected ? 'bg-brand-400' : 'bg-brand-300'}`} />
                     {display}
+                    {isBooked && <span className="text-xs font-bold text-red-400 ml-0.5">Dolu</span>}
                   </button>
                 )
               })}
