@@ -7,7 +7,7 @@ interface CustomerLayoutProps {
 export function CustomerLayout({ children }: CustomerLayoutProps) {
   return (
     <div className="min-h-screen bg-surface-50 text-gray-900">
-      <main className="mx-auto max-w-md min-h-screen pb-32 px-4">
+      <main className="mx-auto max-w-md min-h-screen pb-32 px-4 pt-[env(safe-area-inset-top)]">
         {children}
       </main>
     </div>
