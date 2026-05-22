@@ -10,6 +10,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
@@ -37,24 +40,9 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,svg}', 'icons/icon-*.png', 'icons/apple-touch-icon.png'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/admin/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/[a-z]+\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5,
-              },
-            },
-          },
-        ],
       },
     }),
     // After build: create admin.html from index.html with admin-specific manifest/meta.

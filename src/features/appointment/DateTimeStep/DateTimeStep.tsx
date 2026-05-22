@@ -94,6 +94,15 @@ export function DateTimeStep({
 
   const { allSlots, bookedSlots, isLoading } = useAvailableSlots(selectedDate, service.duration_minutes)
 
+  // Seçilen tarih bugünse, saati geçmiş slotları devre dışı bırak.
+  // Randevu "completed" olsa bile geçmiş saate yeni randevu alınamaz.
+  const now = new Date()
+  const isPastSlot = (slot: string): boolean => {
+    if (!selectedDate || selectedDate > todayStr) return false
+    const [h, m] = slot.split(':').map(Number)
+    return h * 60 + m <= now.getHours() * 60 + now.getMinutes()
+  }
+
   const weeks = buildCalendarGrid(calYear, calMonth, todayStr, maxDateStr)
 
   const maxDate = new Date(maxDateStr)
@@ -269,25 +278,30 @@ export function DateTimeStep({
             <div key={selectedDate} className="grid grid-cols-2 gap-2 animate-slide-up">
               {allSlots.map((slot) => {
                 const isBooked = bookedSlots.has(slot)
-                const isSelected = !isBooked && slot === selectedTime
+                const isPast   = !isBooked && isPastSlot(slot)
+                const isUnavailable = isBooked || isPast
+                const isSelected    = !isUnavailable && slot === selectedTime
                 return (
                   <button
                     key={slot}
                     type="button"
-                    onClick={() => { if (!isBooked) onTimeChange(slot) }}
-                    disabled={isBooked}
+                    onClick={() => { if (!isUnavailable) onTimeChange(slot) }}
+                    disabled={isUnavailable}
                     className={[
                       'flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-medium border transition-all duration-150',
                       isBooked
                         ? 'bg-red-50 text-red-400 border-red-200 cursor-not-allowed opacity-80'
+                        : isPast
+                        ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
                         : isSelected
                         ? 'bg-gray-900 text-white border-gray-900 active:scale-[0.97]'
                         : 'bg-white text-gray-800 border-gray-200 hover:border-gray-400 active:scale-[0.97]',
                     ].join(' ')}
                   >
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${isBooked ? 'bg-red-300' : isSelected ? 'bg-brand-400' : 'bg-brand-300'}`} />
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${isBooked ? 'bg-red-300' : isPast ? 'bg-gray-200' : isSelected ? 'bg-brand-400' : 'bg-brand-300'}`} />
                     <span>{slot}</span>
                     {isBooked && <span className="text-xs font-semibold">Dolu</span>}
+                    {isPast   && <span className="text-xs">Geçti</span>}
                   </button>
                 )
               })}
