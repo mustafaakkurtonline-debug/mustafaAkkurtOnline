@@ -17,11 +17,12 @@ export function useAdminAppointments(date: string): UseAdminAppointmentsReturn {
     setTick(t => t + 1)
   }, [])
 
+  // Veri çekme
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
 
-    const fetch = async (): Promise<void> => {
+    const fetchData = async (): Promise<void> => {
       const { data } = await supabase
         .from('appointments')
         .select('*, services(name, duration_minutes, price)')
@@ -33,9 +34,25 @@ export function useAdminAppointments(date: string): UseAdminAppointmentsReturn {
       setIsLoading(false)
     }
 
-    void fetch()
+    void fetchData()
     return () => { cancelled = true }
   }, [date, tick])
+
+  // Realtime: o güne ait randevu eklenince veya güncellenince listeyi yenile
+  useEffect(() => {
+    const channel = supabase
+      .channel(`admin-appointments-${date}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments', filter: `appointment_date=eq.${date}` },
+        () => { setTick(t => t + 1) },
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') void supabase.removeChannel(channel)
+      })
+
+    return () => { void supabase.removeChannel(channel) }
+  }, [date])
 
   return { appointments, isLoading, refetch }
 }

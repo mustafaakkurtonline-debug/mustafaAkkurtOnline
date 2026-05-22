@@ -5,6 +5,12 @@ import { NetworkFirst, CacheFirst } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
 
+// Yeni SW yüklenince hemen devralır; eski SW'nin "waiting" kalması engellenir.
+self.addEventListener('install', () => { self.skipWaiting() })
+self.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(self.clients.claim())
+})
+
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
