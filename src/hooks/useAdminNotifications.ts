@@ -12,6 +12,7 @@ interface AppointmentPayload {
 
 async function showAppointmentNotification(payload: AppointmentPayload): Promise<void> {
   if (Notification.permission !== 'granted') return
+  if (!('serviceWorker' in navigator)) return
 
   const { customer_name, appointment_date, appointment_time, service_id, id } = payload
 
@@ -23,7 +24,10 @@ async function showAppointmentNotification(payload: AppointmentPayload): Promise
 
   const serviceName = service?.name ?? 'Randevu'
 
-  new Notification('Yeni Randevu 🗓', {
+  // Android Chrome'da new Notification() sayfa bağlamında çalışmaz;
+  // sistem bildirimi yalnızca service worker üzerinden gösterilebilir.
+  const registration = await navigator.serviceWorker.ready
+  await registration.showNotification('Yeni Randevu 🗓', {
     body: `${customer_name} — ${serviceName}\n${formatDateLong(appointment_date)}, saat ${formatTime(appointment_time)}`,
     icon: '/icons/icon-192x192.png',
     tag: `appointment-${id}`,
