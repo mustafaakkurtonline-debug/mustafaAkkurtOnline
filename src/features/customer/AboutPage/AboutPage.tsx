@@ -1,16 +1,9 @@
 import { Link } from 'react-router-dom'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
+import { useWorkingHours } from '@/hooks/useWorkingHours'
+import { formatTime } from '@/utils/dateUtils'
 
-const WORKING_HOURS = [
-  { day: 'Pazartesi', hours: '09:00 – 19:00' },
-  { day: 'Salı', hours: '09:00 – 19:00' },
-  { day: 'Çarşamba', hours: '09:00 – 19:00' },
-  { day: 'Perşembe', hours: '09:00 – 19:00' },
-  { day: 'Cuma', hours: '09:00 – 19:00' },
-  { day: 'Cumartesi', hours: '09:00 – 18:00' },
-  { day: 'Pazar', hours: 'Kapalı' },
-]
-
+const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
 
 function MapPinIcon() {
   return (
@@ -38,6 +31,7 @@ function isInStandaloneMode(): boolean {
 export function AboutPage() {
   const { canInstall, promptInstall } = usePWAInstall()
   const alreadyInstalled = isInStandaloneMode()
+  const { workingHours, isLoading } = useWorkingHours()
 
   return (
     <div className="pt-10 pb-4 space-y-7">
@@ -74,17 +68,29 @@ export function AboutPage() {
       <div>
         <h2 className="text-gray-900 font-bold text-lg mb-3">Çalışma Saatleri</h2>
         <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-          {WORKING_HOURS.map(({ day, hours }, i) => (
-            <div
-              key={day}
-              className={`flex items-center justify-between px-4 py-3 ${i < WORKING_HOURS.length - 1 ? 'border-b border-gray-100' : ''}`}
-            >
-              <span className="text-gray-700 text-sm font-medium">{day}</span>
-              <span className={`text-sm font-semibold ${hours === 'Kapalı' ? 'text-red-400' : 'text-gray-900'}`}>
-                {hours}
-              </span>
+          {isLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
             </div>
-          ))}
+          ) : (
+            workingHours.map((wh, i) => {
+              const dayName = DAY_NAMES[wh.day_of_week] ?? `Gün ${wh.day_of_week}`
+              const hoursText = wh.is_open
+                ? `${formatTime(wh.open_time)} – ${formatTime(wh.close_time)}`
+                : 'Kapalı'
+              return (
+                <div
+                  key={wh.id}
+                  className={`flex items-center justify-between px-4 py-3 ${i < workingHours.length - 1 ? 'border-b border-gray-100' : ''}`}
+                >
+                  <span className="text-gray-700 text-sm font-medium">{dayName}</span>
+                  <span className={`text-sm font-semibold ${wh.is_open ? 'text-gray-900' : 'text-red-400'}`}>
+                    {hoursText}
+                  </span>
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 

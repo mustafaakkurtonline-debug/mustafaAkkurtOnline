@@ -1,4 +1,9 @@
+import { useWorkingHours } from '@/hooks/useWorkingHours'
+import { formatTime } from '@/utils/dateUtils'
+
 const PHONE = '0507 873 19 10'
+
+const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
 
 function buildWhatsAppLink(phone: string, message: string): string {
   const normalized = phone.replace(/\D/g, '')
@@ -8,6 +13,7 @@ function buildWhatsAppLink(phone: string, message: string): string {
 
 export function ContactPage() {
   const waLink = buildWhatsAppLink(PHONE, 'Merhaba, randevu hakkında bilgi almak istiyorum.')
+  const { workingHours, isLoading } = useWorkingHours()
 
   return (
     <div className="pt-10 pb-4 space-y-5">
@@ -76,23 +82,29 @@ export function ContactPage() {
         </div>
       </div>
 
-      {/* Working hours quick reference */}
+      {/* Working hours */}
       <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
         <p className="text-gray-700 text-sm font-semibold mb-3">Çalışma Saatleri</p>
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Pzt – Cum</span>
-            <span className="text-gray-800 font-medium">09:00 – 19:00</span>
+        {isLoading ? (
+          <div className="flex justify-center py-3">
+            <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Cumartesi</span>
-            <span className="text-gray-800 font-medium">09:00 – 18:00</span>
+        ) : (
+          <div className="space-y-1.5">
+            {workingHours.map(wh => (
+              <div key={wh.id} className="flex justify-between text-sm">
+                <span className="text-gray-500">{DAY_NAMES[wh.day_of_week] ?? `Gün ${wh.day_of_week}`}</span>
+                {wh.is_open ? (
+                  <span className="text-gray-800 font-medium">
+                    {formatTime(wh.open_time)} – {formatTime(wh.close_time)}
+                  </span>
+                ) : (
+                  <span className="text-red-400 font-medium">Kapalı</span>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Pazar</span>
-            <span className="text-red-400 font-medium">Kapalı</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )
