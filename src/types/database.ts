@@ -232,6 +232,44 @@ export interface Database {
         }
         Relationships: []
       }
+      appointment_reminders: {
+        Row: {
+          id: string
+          appointment_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          reminder_sent: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          reminder_sent?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          reminder_sent?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'appointment_reminders_appointment_id_fkey'
+            columns: ['appointment_id']
+            isOneToOne: false
+            referencedRelation: 'appointments'
+            referencedColumns: ['id']
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
