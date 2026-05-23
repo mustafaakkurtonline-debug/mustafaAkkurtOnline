@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDateLong, formatTime, formatDuration } from '@/utils/dateUtils'
 import type { AppointmentFormData } from '@/types/appointment'
@@ -8,8 +8,6 @@ interface SuccessStepProps {
   appointmentId: string | null
   onNewAppointment: () => void
 }
-
-type ReminderState = 'idle' | 'requesting' | 'granted' | 'denied'
 
 function isIos(): boolean {
   return /iphone|ipad|ipod/i.test(navigator.userAgent)
@@ -59,23 +57,16 @@ async function subscribeAndSave(appointmentId: string): Promise<boolean> {
 export function SuccessStep({ formData, appointmentId, onNewAppointment }: SuccessStepProps) {
   const alreadyInstalled = isInStandaloneMode()
   const ios = isIos()
+  const [reminderSet, setReminderSet] = useState(false)
 
-  const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
-  const [reminderState, setReminderState] = useState<ReminderState>('idle')
+  // İzin zaten verilmişse otomatik abone ol — kullanıcı etkileşimi gerekmez
+  useEffect(() => {
+    if (!appointmentId) return
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
+    if (Notification.permission !== 'granted') return
 
-  const handleReminderSubscribe = async (): Promise<void> => {
-    if (!appointmentId || reminderState !== 'idle') return
-    setReminderState('requesting')
-
-    const permission = await Notification.requestPermission()
-    if (permission !== 'granted') {
-      setReminderState('denied')
-      return
-    }
-
-    const ok = await subscribeAndSave(appointmentId)
-    setReminderState(ok ? 'granted' : 'denied')
-  }
+    void subscribeAndSave(appointmentId).then((ok) => { if (ok) setReminderSet(true) })
+  }, [appointmentId])
 
   return (
     <div className="pt-10 pb-4 space-y-6">
@@ -116,37 +107,12 @@ export function SuccessStep({ formData, appointmentId, onNewAppointment }: Succe
         </div>
       </div>
 
-      {/* Reminder subscription */}
-      {pushSupported && appointmentId !== null && reminderState !== 'granted' && (
-        <button
-          type="button"
-          onClick={() => { void handleReminderSubscribe() }}
-          disabled={reminderState === 'requesting' || reminderState === 'denied'}
-          className={`w-full flex items-center justify-center gap-2 py-4 rounded-full font-medium transition-all ${
-            reminderState === 'denied'
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : reminderState === 'requesting'
-                ? 'bg-brand-50 text-brand-400 cursor-wait'
-                : 'bg-brand-500 text-white active:scale-[0.98] hover:bg-brand-600'
-          }`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          {reminderState === 'requesting'
-            ? 'Ayarlanıyor...'
-            : reminderState === 'denied'
-              ? 'Bildirim izni kapalı'
-              : 'Randevu Hatırlatması Al'}
-        </button>
-      )}
-      {reminderState === 'granted' && (
-        <div className="flex items-center justify-center gap-2 py-3 text-green-600 text-sm font-medium">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {reminderSet && (
+        <div className="flex items-center justify-center gap-2 py-2 text-gray-400 text-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          Randevudan 1 saat önce hatırlatma gönderilecek
+          1 saat önce hatırlatma gönderilecek
         </div>
       )}
 
