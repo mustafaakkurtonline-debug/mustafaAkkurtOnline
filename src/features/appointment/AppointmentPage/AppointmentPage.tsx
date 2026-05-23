@@ -16,6 +16,7 @@ interface WizardState {
   time: string | null
   customerName: string
   customerPhone: string
+  appointmentId: string | null
 }
 
 const INITIAL_STATE: WizardState = {
@@ -25,6 +26,7 @@ const INITIAL_STATE: WizardState = {
   time: null,
   customerName: '',
   customerPhone: '',
+  appointmentId: null,
 }
 
 // Progress percentage per step for the summary bar
@@ -117,14 +119,14 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     setIsSubmitting(true)
     setSubmitError(null)
 
-    const { error } = await supabase.from('appointments').insert({
+    const { data: inserted, error } = await supabase.from('appointments').insert({
       customer_name: customerName,
       customer_phone: normalizePhone(customerPhone),
       service_id: service.id,
       appointment_date: date,
       appointment_time: time,
       status: 'pending',
-    })
+    }).select('id').single()
 
     setIsSubmitting(false)
 
@@ -138,7 +140,7 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
       return
     }
 
-    setWizard(prev => ({ ...prev, step: 'success' }))
+    setWizard(prev => ({ ...prev, step: 'success', appointmentId: inserted?.id ?? null }))
 
     // Browser push notification
     if ('Notification' in window && Notification.permission !== 'denied') {
@@ -229,6 +231,7 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
         return (
           <SuccessStep
             formData={formData}
+            appointmentId={wizard.appointmentId}
             onNewAppointment={handleNewAppointment}
           />
         )
