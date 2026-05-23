@@ -181,6 +181,33 @@ export interface Database {
         }
         Relationships: []
       }
+      blocked_slots: {
+        Row: {
+          id: string
+          blocked_date: string
+          start_time: string
+          end_time: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          blocked_date: string
+          start_time: string
+          end_time: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          blocked_date?: string
+          start_time?: string
+          end_time?: string
+          reason?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           id: string

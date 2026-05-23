@@ -25,4 +25,13 @@ export interface AppointmentWithService {
   } | null
 }
 
+export interface BlockedSlot {
+  id: string
+  blocked_date: string
+  start_time: string
+  end_time: string
+  reason: string | null
+  created_at: string
+}
+
 export type AdminTab = 'dashboard' | 'services' | 'settings'

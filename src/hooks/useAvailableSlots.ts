@@ -58,7 +58,7 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
 
       const slots = generateTimeSlots(wh.open_time, wh.close_time, durationMinutes)
 
-      const [{ data: bookedData }, { data: reserved }] = await Promise.all([
+      const [{ data: bookedData }, { data: reserved }, { data: blockedSlotData }] = await Promise.all([
         supabase.rpc('get_booked_slots', { p_date: date }),
         supabase
           .from('reserved_slots')
@@ -67,13 +67,29 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
           .eq('is_active', true)
           .lte('start_date', date)
           .or(`end_date.is.null,end_date.gte.${date}`),
+        supabase
+          .from('blocked_slots')
+          .select('start_time, end_time')
+          .eq('blocked_date', date),
       ])
 
       if (cancelled) return
 
+      const toMin = (t: string): number => {
+        const [h, m] = t.split(':').map(Number)
+        return h * 60 + m
+      }
+      const ranges = (blockedSlotData ?? []) as { start_time: string; end_time: string }[]
+      const blockedByRange = new Set(
+        slots.filter(slot =>
+          ranges.some(r => toMin(slot) >= toMin(r.start_time) && toMin(slot) < toMin(r.end_time)),
+        ),
+      )
+
       const booked = new Set([
         ...(bookedData ?? []).map((r: { slot_time: string }) => formatTime(r.slot_time)),
         ...(reserved ?? []).map(r => formatTime(r.slot_time)),
+        ...blockedByRange,
       ])
 
       setAllSlots(slots)
