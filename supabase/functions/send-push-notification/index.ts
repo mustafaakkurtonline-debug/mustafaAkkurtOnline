@@ -187,6 +187,7 @@ Deno.serve(async (req: Request) => {
 
   await Promise.allSettled(
     subscriptions.map(async (sub: { endpoint: string; p256dh: string; auth: string }) => {
+      const tag = sub.endpoint.slice(-30)
       try {
         const res = await sendWebPush({
           endpoint: sub.endpoint,
@@ -196,14 +197,18 @@ Deno.serve(async (req: Request) => {
           vapidPublicKey: VAPID_PUBLIC_KEY,
           vapidPrivateKey: VAPID_PRIVATE_KEY,
         })
-        // 410 Gone veya 404: abonelik artık geçersiz → sil
         if (res.status === 410 || res.status === 404) {
+          console.warn(`push expired [${tag}] status=${res.status}`)
           expiredEndpoints.push(sub.endpoint)
+        } else if (res.status >= 400) {
+          const body = await res.text().catch(() => '')
+          console.error(`push failed [${tag}] status=${res.status} body=${body}`)
         } else {
+          console.log(`push ok [${tag}] status=${res.status}`)
           sent++
         }
-      } catch {
-        // Ağ hatası — sessizce geç
+      } catch (err) {
+        console.error(`push error [${tag}]`, err)
       }
     }),
   )
