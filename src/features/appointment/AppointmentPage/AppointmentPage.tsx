@@ -119,14 +119,17 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     setIsSubmitting(true)
     setSubmitError(null)
 
-    const { data: inserted, error } = await supabase.from('appointments').insert({
+    const appointmentId = crypto.randomUUID()
+
+    const { error } = await supabase.from('appointments').insert({
+      id: appointmentId,
       customer_name: customerName,
       customer_phone: normalizePhone(customerPhone),
       service_id: service.id,
       appointment_date: date,
       appointment_time: time,
       status: 'pending',
-    }).select('id').single()
+    })
 
     setIsSubmitting(false)
 
@@ -140,7 +143,7 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
       return
     }
 
-    setWizard(prev => ({ ...prev, step: 'success', appointmentId: inserted?.id ?? null }))
+    setWizard(prev => ({ ...prev, step: 'success', appointmentId }))
 
     // Browser push notification
     if ('Notification' in window && Notification.permission !== 'denied') {
