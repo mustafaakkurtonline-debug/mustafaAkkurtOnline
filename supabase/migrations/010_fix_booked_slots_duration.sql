@@ -1,5 +1,7 @@
 -- Randevu sürelerini de döndür; böylece slot çakışması doğru hesaplanır
 -- Örnek: 14:00'da 60 dk randevu → end_time 15:00 → 14:30 slotu da kapalı
+DROP FUNCTION IF EXISTS get_booked_slots(date);
+
 CREATE OR REPLACE FUNCTION get_booked_slots(p_date date)
 RETURNS TABLE(slot_time time, end_time time)
 LANGUAGE sql
