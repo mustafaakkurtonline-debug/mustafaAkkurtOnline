@@ -291,7 +291,7 @@ export interface Database {
       }
       get_booked_slots: {
         Args: { p_date: string }
-        Returns: { slot_time: string }[]
+        Returns: { slot_time: string; end_time: string }[]
       }
     }
     Enums: {

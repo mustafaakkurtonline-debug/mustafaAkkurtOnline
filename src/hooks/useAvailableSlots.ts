@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { jsToDbDayOfWeek, getJsDayOfWeek, generateTimeSlots, formatTime } from '@/utils/dateUtils'
+import { jsToDbDayOfWeek, getJsDayOfWeek, generateTimeSlots } from '@/utils/dateUtils'
 
 interface SlotData {
   allSlots: string[]
@@ -79,6 +79,38 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
         const [h, m] = t.split(':').map(Number)
         return h * 60 + m
       }
+
+      // Appointments: block any slot whose range [T, T+D) overlaps with an existing
+      // appointment range [A, A+D_A). Overlap condition: T < A+D_A AND T+D > A
+      type BookedRow = { slot_time: string; end_time: string }
+      const bookedRanges = (bookedData ?? []) as BookedRow[]
+      const blockedByAppointment = new Set(
+        slots.filter(slot => {
+          const slotStart = toMin(slot)
+          const slotEnd = slotStart + durationMinutes
+          return bookedRanges.some(r => {
+            const apptStart = toMin(r.slot_time)
+            const apptEnd = toMin(r.end_time)
+            return slotStart < apptEnd && slotEnd > apptStart
+          })
+        }),
+      )
+
+      // Reserved slots: block any new slot whose range [T, T+D) contains the reserved
+      // time. This prevents a new appointment from starting just before a reserved slot
+      // and running into it.
+      const blockedByReserved = new Set(
+        slots.filter(slot => {
+          const slotStart = toMin(slot)
+          const slotEnd = slotStart + durationMinutes
+          return (reserved ?? []).some(r => {
+            const rMin = toMin(r.slot_time)
+            return rMin >= slotStart && rMin < slotEnd
+          })
+        }),
+      )
+
+      // Admin-blocked time ranges
       const ranges = (blockedSlotData ?? []) as { start_time: string; end_time: string }[]
       const blockedByRange = new Set(
         slots.filter(slot =>
@@ -86,14 +118,8 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
         ),
       )
 
-      const booked = new Set([
-        ...(bookedData ?? []).map((r: { slot_time: string }) => formatTime(r.slot_time)),
-        ...(reserved ?? []).map(r => formatTime(r.slot_time)),
-        ...blockedByRange,
-      ])
-
       setAllSlots(slots)
-      setBookedSlots(booked)
+      setBookedSlots(new Set([...blockedByAppointment, ...blockedByReserved, ...blockedByRange]))
       setIsLoading(false)
     }
 
