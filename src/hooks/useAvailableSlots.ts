@@ -112,12 +112,14 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
         }),
       )
 
-      // Admin-blocked time ranges
+      // Admin-blocked time ranges: full overlap check, same formula as appointments/reserved.
       const ranges = (blockedSlotData ?? []) as { start_time: string; end_time: string }[]
       const blockedByRange = new Set(
-        slots.filter(slot =>
-          ranges.some(r => toMin(slot) >= toMin(r.start_time) && toMin(slot) < toMin(r.end_time)),
-        ),
+        slots.filter(slot => {
+          const slotStart = toMin(slot)
+          const slotEnd = slotStart + durationMinutes
+          return ranges.some(r => slotStart < toMin(r.end_time) && slotEnd > toMin(r.start_time))
+        }),
       )
 
       setAllSlots(slots)
