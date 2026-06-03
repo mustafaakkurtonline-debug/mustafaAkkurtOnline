@@ -11,6 +11,7 @@ interface SlotFormData {
   customer_name: string
   day_of_week: number
   slot_time: string
+  duration_minutes: number
   start_date: string
   end_date: string
   is_active: boolean
@@ -20,6 +21,7 @@ const EMPTY_FORM: SlotFormData = {
   customer_name: '',
   day_of_week: 0,
   slot_time: '09:00',
+  duration_minutes: 60,
   start_date: '',
   end_date: '',
   is_active: true,
@@ -99,7 +101,7 @@ export function ReservedSlotsSection() {
             <div className="min-w-0">
               <p className="text-gray-900 text-sm font-semibold">{slot.customer_name}</p>
               <p className="text-gray-500 text-xs mt-0.5">
-                {DAY_NAMES[slot.day_of_week] ?? `Gün ${slot.day_of_week}`} · {formatTime(slot.slot_time)}
+                {DAY_NAMES[slot.day_of_week] ?? `Gün ${slot.day_of_week}`} · {formatTime(slot.slot_time)} · {slot.duration_minutes} dk
               </p>
               <p className="text-gray-400 text-xs">
                 {slot.start_date}
@@ -162,6 +164,7 @@ function SlotForm({ slot, onSuccess, onCancel }: SlotFormProps) {
           customer_name: slot.customer_name,
           day_of_week: slot.day_of_week,
           slot_time: formatTime(slot.slot_time),
+          duration_minutes: slot.duration_minutes,
           start_date: slot.start_date,
           end_date: slot.end_date ?? '',
           is_active: slot.is_active,
@@ -188,6 +191,7 @@ function SlotForm({ slot, onSuccess, onCancel }: SlotFormProps) {
       customer_name: form.customer_name.trim(),
       day_of_week: form.day_of_week,
       slot_time: form.slot_time,
+      duration_minutes: form.duration_minutes,
       start_date: form.start_date,
       end_date: form.end_date || null,
       is_active: form.is_active,
@@ -245,6 +249,21 @@ function SlotForm({ slot, onSuccess, onCancel }: SlotFormProps) {
                 className="w-full bg-surface-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 text-sm outline-none focus:border-brand-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-600 text-sm mb-1">Süre</label>
+            <select
+              value={form.duration_minutes}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => { update({ duration_minutes: Number(e.target.value) }) }}
+              className="w-full bg-surface-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 text-sm outline-none focus:border-brand-500"
+            >
+              <option value={30}>30 dakika</option>
+              <option value={45}>45 dakika</option>
+              <option value={60}>60 dakika (1 saat)</option>
+              <option value={90}>90 dakika</option>
+              <option value={120}>120 dakika (2 saat)</option>
+            </select>
           </div>
 
           <div>

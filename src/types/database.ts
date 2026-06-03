@@ -88,6 +88,7 @@ export interface Database {
           customer_name: string
           day_of_week: number
           slot_time: string
+          duration_minutes: number
           start_date: string
           end_date: string | null
           is_active: boolean
@@ -98,6 +99,7 @@ export interface Database {
           customer_name: string
           day_of_week: number
           slot_time: string
+          duration_minutes?: number
           start_date: string
           end_date?: string | null
           is_active?: boolean
@@ -108,6 +110,7 @@ export interface Database {
           customer_name?: string
           day_of_week?: number
           slot_time?: string
+          duration_minutes?: number
           start_date?: string
           end_date?: string | null
           is_active?: boolean

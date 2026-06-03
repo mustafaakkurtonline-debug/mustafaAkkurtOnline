@@ -62,7 +62,7 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
         supabase.rpc('get_booked_slots', { p_date: date }),
         supabase
           .from('reserved_slots')
-          .select('slot_time')
+          .select('slot_time, duration_minutes')
           .eq('day_of_week', dbDay)
           .eq('is_active', true)
           .lte('start_date', date)
@@ -96,16 +96,18 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
         }),
       )
 
-      // Reserved slots: block any new slot whose range [T, T+D) contains the reserved
-      // time. This prevents a new appointment from starting just before a reserved slot
-      // and running into it.
+      // Reserved slots: use each slot's own duration to determine the blocked range.
+      // A new appointment [slotStart, slotEnd) overlaps with reserved [rStart, rEnd) if:
+      //   slotStart < rEnd AND slotEnd > rStart
+      type ReservedRow = { slot_time: string; duration_minutes: number }
       const blockedByReserved = new Set(
         slots.filter(slot => {
           const slotStart = toMin(slot)
           const slotEnd = slotStart + durationMinutes
-          return (reserved ?? []).some(r => {
-            const rMin = toMin(r.slot_time)
-            return rMin >= slotStart && rMin < slotEnd
+          return (reserved ?? []).some((r: ReservedRow) => {
+            const rStart = toMin(r.slot_time)
+            const rEnd = rStart + (r.duration_minutes ?? 60)
+            return slotStart < rEnd && slotEnd > rStart
           })
         }),
       )
