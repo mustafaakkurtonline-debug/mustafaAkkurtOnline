@@ -134,7 +134,7 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     setIsSubmitting(false)
 
     if (error) {
-      if (error.code === '23505') {
+      if (error.code === '23505' || error.code === '23P01') {
         setSubmitError('Bu saat az önce doldu. Lütfen başka bir saat seçin.')
         setWizard(prev => ({ ...prev, step: 'datetime', time: null }))
       } else {
