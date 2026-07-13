@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { formatPhoneInput, isValidTurkishPhone, normalizePhone, formatDateLong, formatTime, getTodayString } from '@/utils/dateUtils'
 import type { AppointmentStatus } from '@/types/database'
 
+const MAX_VISIBLE_APPOINTMENTS = 5
+
 interface AppointmentRow {
   id: string
   appointment_date: string
@@ -101,10 +103,11 @@ export function MyAccountPage() {
   }
 
   if (appointments !== null) {
-    const upcoming = appointments.filter(
+    const visibleAppointments = appointments.slice(0, MAX_VISIBLE_APPOINTMENTS)
+    const upcoming = visibleAppointments.filter(
       a => a.appointment_date >= today && a.status !== 'completed' && a.status !== 'no_show'
     )
-    const past = appointments.filter(
+    const past = visibleAppointments.filter(
       a => a.appointment_date < today || a.status === 'completed' || a.status === 'no_show'
     )
 
