@@ -118,6 +118,38 @@ export interface Database {
         }
         Relationships: []
       }
+      reserved_slot_exceptions: {
+        Row: {
+          id: string
+          reserved_slot_id: string
+          exception_date: string
+          new_time: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          reserved_slot_id: string
+          exception_date: string
+          new_time?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          reserved_slot_id?: string
+          exception_date?: string
+          new_time?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'reserved_slot_exceptions_reserved_slot_id_fkey'
+            columns: ['reserved_slot_id']
+            isOneToOne: false
+            referencedRelation: 'reserved_slots'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       banned_customers: {
         Row: {
           id: string

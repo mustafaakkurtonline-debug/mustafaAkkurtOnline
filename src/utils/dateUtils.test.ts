@@ -7,6 +7,7 @@ import {
   getTodayString,
   addDays,
   formatTime,
+  getNextDateForDbDay,
 } from './dateUtils'
 
 describe('jsToDbDayOfWeek', () => {
@@ -87,5 +88,18 @@ describe('formatTime', () => {
   })
   it('passes through HH:mm unchanged', () => {
     expect(formatTime('09:30')).toBe('09:30')
+  })
+})
+
+describe('getNextDateForDbDay', () => {
+  // 2026-07-14 Salı → DB gün 1
+  it('returns the same date when the day matches', () => {
+    expect(getNextDateForDbDay(1, '2026-07-14')).toBe('2026-07-14')
+  })
+  it('returns the next occurrence within the same week', () => {
+    expect(getNextDateForDbDay(4, '2026-07-14')).toBe('2026-07-17')
+  })
+  it('wraps to next week for a day already passed', () => {
+    expect(getNextDateForDbDay(0, '2026-07-14')).toBe('2026-07-20')
   })
 })

@@ -2,10 +2,12 @@ import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useReservedSlots } from '@/hooks/useReservedSlots'
-import { formatTime } from '@/utils/dateUtils'
-import type { ReservedSlot } from '@/types/admin'
+import { formatTime, formatDateLong, getTodayString, getNextDateForDbDay, getJsDayOfWeek, jsToDbDayOfWeek } from '@/utils/dateUtils'
+import type { ReservedSlot, ReservedSlotException } from '@/types/admin'
 
 const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
+
+const UNIQUE_VIOLATION_CODE = '23505'
 
 interface SlotFormData {
   customer_name: string
@@ -47,10 +49,24 @@ function TrashIcon() {
   )
 }
 
+function CalendarOffIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="10" y1="14" x2="14" y2="18" />
+      <line x1="14" y1="14" x2="10" y2="18" />
+    </svg>
+  )
+}
+
 export function ReservedSlotsSection() {
-  const { reservedSlots, isLoading, refetch } = useReservedSlots()
+  const { reservedSlots, exceptions, isLoading, refetch } = useReservedSlots()
   const [editingSlot, setEditingSlot] = useState<ReservedSlot | null>(null)
   const [showAddForm, setShowAddForm] = useState<boolean>(false)
+  const [exceptionSlot, setExceptionSlot] = useState<ReservedSlot | null>(null)
 
   const handleToggleActive = async (slot: ReservedSlot): Promise<void> => {
     await supabase.from('reserved_slots').update({ is_active: !slot.is_active }).eq('id', slot.id)
@@ -63,9 +79,15 @@ export function ReservedSlotsSection() {
     refetch()
   }
 
+  const handleDeleteException = async (exception: ReservedSlotException): Promise<void> => {
+    await supabase.from('reserved_slot_exceptions').delete().eq('id', exception.id)
+    refetch()
+  }
+
   const handleFormSuccess = (): void => {
     setEditingSlot(null)
     setShowAddForm(false)
+    setExceptionSlot(null)
     refetch()
   }
 
@@ -92,53 +114,90 @@ export function ReservedSlotsSection() {
         <p className="text-gray-400 text-sm mb-2">Sabit slot yok.</p>
       )}
 
-      {!isLoading && reservedSlots.map(slot => (
-        <div
-          key={slot.id}
-          className={`bg-white rounded-xl p-3 mb-2 border border-gray-100 shadow-sm ${!slot.is_active ? 'opacity-50' : ''}`}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-gray-900 text-sm font-semibold">{slot.customer_name}</p>
-              <p className="text-gray-500 text-xs mt-0.5">
-                {DAY_NAMES[slot.day_of_week] ?? `Gün ${slot.day_of_week}`} · {formatTime(slot.slot_time)} · {slot.duration_minutes} dk
-              </p>
-              <p className="text-gray-400 text-xs">
-                {slot.start_date}
-                {slot.end_date ? ` → ${slot.end_date}` : ' → Süresiz'}
-              </p>
+      {!isLoading && reservedSlots.map(slot => {
+        const slotExceptions = exceptions.filter(ex => ex.reserved_slot_id === slot.id)
+        return (
+          <div
+            key={slot.id}
+            className={`bg-white rounded-xl p-3 mb-2 border border-gray-100 shadow-sm ${!slot.is_active ? 'opacity-50' : ''}`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-gray-900 text-sm font-semibold">{slot.customer_name}</p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  {DAY_NAMES[slot.day_of_week] ?? `Gün ${slot.day_of_week}`} · {formatTime(slot.slot_time)} · {slot.duration_minutes} dk
+                </p>
+                <p className="text-gray-400 text-xs">
+                  {slot.start_date}
+                  {slot.end_date ? ` → ${slot.end_date}` : ' → Süresiz'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { void handleToggleActive(slot) }}
+                  className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${slot.is_active ? 'bg-brand-500' : 'bg-gray-300'}`}
+                  title={slot.is_active ? 'Pasife al' : 'Aktife al'}
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${slot.is_active ? 'translate-x-4' : 'translate-x-0.5'}`}
+                  />
+                </button>
+                {slot.is_active && (
+                  <button
+                    type="button"
+                    onClick={() => { setExceptionSlot(slot) }}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors cursor-pointer"
+                    title="Tek tarihe özel değişiklik (ertele / o gün yok)"
+                  >
+                    <CalendarOffIcon />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setEditingSlot(slot) }}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-surface-100 text-gray-500 hover:bg-surface-200 transition-colors cursor-pointer"
+                  title="Düzenle"
+                >
+                  <EditIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { void handleDelete(slot) }}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors cursor-pointer"
+                  title="Sil"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => { void handleToggleActive(slot) }}
-                className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${slot.is_active ? 'bg-brand-500' : 'bg-gray-300'}`}
-                title={slot.is_active ? 'Pasife al' : 'Aktife al'}
-              >
-                <span
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${slot.is_active ? 'translate-x-4' : 'translate-x-0.5'}`}
-                />
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEditingSlot(slot) }}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-surface-100 text-gray-500 hover:bg-surface-200 transition-colors cursor-pointer"
-                title="Düzenle"
-              >
-                <EditIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => { void handleDelete(slot) }}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors cursor-pointer"
-                title="Sil"
-              >
-                <TrashIcon />
-              </button>
-            </div>
+
+            {slotExceptions.length > 0 && (
+              <div className="mt-2.5 pt-2.5 border-t border-gray-100 space-y-1.5">
+                {slotExceptions.map(ex => (
+                  <div key={ex.id} className="flex items-center justify-between gap-2">
+                    <p className="text-amber-600 text-xs">
+                      {formatDateLong(ex.exception_date)} —{' '}
+                      {ex.new_time ? `saat ${formatTime(ex.new_time)}'e alındı` : 'o gün gelmiyor'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { void handleDeleteException(ex) }}
+                      className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                      title="İstisnayı geri al"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       {(showAddForm || editingSlot !== null) && (
         <SlotForm
@@ -147,7 +206,145 @@ export function ReservedSlotsSection() {
           onCancel={() => { setEditingSlot(null); setShowAddForm(false) }}
         />
       )}
+
+      {exceptionSlot !== null && (
+        <ExceptionForm
+          slot={exceptionSlot}
+          onSuccess={handleFormSuccess}
+          onCancel={() => { setExceptionSlot(null) }}
+        />
+      )}
     </section>
+  )
+}
+
+type ExceptionMode = 'skip' | 'move'
+
+interface ExceptionFormProps {
+  slot: ReservedSlot
+  onSuccess: () => void
+  onCancel: () => void
+}
+
+function ExceptionForm({ slot, onSuccess, onCancel }: ExceptionFormProps) {
+  const [exceptionDate, setExceptionDate] = useState<string>(getNextDateForDbDay(slot.day_of_week))
+  const [mode, setMode] = useState<ExceptionMode>('skip')
+  const [newTime, setNewTime] = useState<string>(formatTime(slot.slot_time))
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const dayName = DAY_NAMES[slot.day_of_week] ?? ''
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault()
+    if (!exceptionDate) { setError('Tarih zorunludur.'); return }
+    if (exceptionDate < getTodayString()) { setError('Geçmiş bir tarih seçilemez.'); return }
+    if (jsToDbDayOfWeek(getJsDayOfWeek(exceptionDate)) !== slot.day_of_week) {
+      setError(`Seçilen tarih ${dayName} gününe denk gelmiyor.`)
+      return
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    const { error: err } = await supabase.from('reserved_slot_exceptions').insert({
+      reserved_slot_id: slot.id,
+      exception_date: exceptionDate,
+      new_time: mode === 'move' ? newTime : null,
+    })
+
+    if (err) {
+      setError(err.code === UNIQUE_VIOLATION_CODE
+        ? 'Bu tarih için zaten bir istisna mevcut. Önce onu geri alın.'
+        : 'İstisna kaydedilemedi.')
+      setIsSubmitting(false)
+      return
+    }
+
+    onSuccess()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
+      <div className="bg-white rounded-2xl w-full max-w-sm border border-gray-100 shadow-xl p-5 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-gray-900 font-bold text-lg mb-1">Tek Tarihe Özel Değişiklik</h2>
+        <p className="text-gray-500 text-sm mb-4">
+          {slot.customer_name} · {dayName} {formatTime(slot.slot_time)} — sadece seçilen tarih etkilenir, slot kalıcı olarak değişmez.
+        </p>
+
+        <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
+          <div>
+            <label className="block text-gray-600 text-sm mb-1">Tarih ({dayName})</label>
+            <input
+              type="date"
+              value={exceptionDate}
+              min={getTodayString()}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => { setExceptionDate(e.target.value) }}
+              className="w-full bg-surface-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 text-sm outline-none focus:border-brand-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-600 text-sm mb-1">Ne yapılacak?</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setMode('skip') }}
+                className={`py-2.5 rounded-xl text-sm font-medium border transition-colors cursor-pointer ${
+                  mode === 'skip'
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-surface-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                O gün gelmiyor
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('move') }}
+                className={`py-2.5 rounded-xl text-sm font-medium border transition-colors cursor-pointer ${
+                  mode === 'move'
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-surface-50 text-gray-600 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                Saati değiştir
+              </button>
+            </div>
+          </div>
+
+          {mode === 'move' && (
+            <div>
+              <label className="block text-gray-600 text-sm mb-1">O günkü yeni saat</label>
+              <input
+                type="time"
+                value={newTime}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => { setNewTime(e.target.value) }}
+                className="w-full bg-surface-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 text-sm outline-none focus:border-brand-500"
+              />
+            </div>
+          )}
+
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 py-2.5 rounded-xl bg-surface-100 text-gray-600 text-sm font-medium hover:bg-surface-200 transition-colors cursor-pointer"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? 'Kaydediliyor…' : 'Kaydet'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 

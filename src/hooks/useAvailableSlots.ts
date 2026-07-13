@@ -58,15 +58,19 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
 
       const slots = generateTimeSlots(wh.open_time, wh.close_time, durationMinutes)
 
-      const [{ data: bookedData }, { data: reserved }, { data: blockedSlotData }] = await Promise.all([
+      const [{ data: bookedData }, { data: reserved }, { data: exceptions }, { data: blockedSlotData }] = await Promise.all([
         supabase.rpc('get_booked_slots', { p_date: date }),
         supabase
           .from('reserved_slots')
-          .select('slot_time, duration_minutes')
+          .select('id, slot_time, duration_minutes')
           .eq('day_of_week', dbDay)
           .eq('is_active', true)
           .lte('start_date', date)
           .or(`end_date.is.null,end_date.gte.${date}`),
+        supabase
+          .from('reserved_slot_exceptions')
+          .select('reserved_slot_id, new_time')
+          .eq('exception_date', date),
         supabase
           .from('blocked_slots')
           .select('start_time, end_time')
@@ -99,13 +103,22 @@ export function useAvailableSlots(date: string | null, durationMinutes: number):
       // Reserved slots: use each slot's own duration to determine the blocked range.
       // A new appointment [slotStart, slotEnd) overlaps with reserved [rStart, rEnd) if:
       //   slotStart < rEnd AND slotEnd > rStart
-      type ReservedRow = { slot_time: string; duration_minutes: number }
+      // Date-specific exceptions: new_time null → slot doesn't block that date;
+      // new_time set → slot blocks at new_time instead of its regular time.
+      type ReservedRow = { id: string; slot_time: string; duration_minutes: number }
+      type ExceptionRow = { reserved_slot_id: string; new_time: string | null }
+      const exceptionBySlotId = new Map(
+        ((exceptions ?? []) as ExceptionRow[]).map(e => [e.reserved_slot_id, e.new_time]),
+      )
       const blockedByReserved = new Set(
         slots.filter(slot => {
           const slotStart = toMin(slot)
           const slotEnd = slotStart + durationMinutes
           return (reserved ?? []).some((r: ReservedRow) => {
-            const rStart = toMin(r.slot_time)
+            const hasException = exceptionBySlotId.has(r.id)
+            const newTime = exceptionBySlotId.get(r.id)
+            if (hasException && newTime === null) return false
+            const rStart = toMin(hasException && newTime !== undefined && newTime !== null ? newTime : r.slot_time)
             const rEnd = rStart + (r.duration_minutes ?? 60)
             return slotStart < rEnd && slotEnd > rStart
           })

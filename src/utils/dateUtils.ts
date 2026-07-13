@@ -65,6 +65,13 @@ export function getJsDayOfWeek(dateStr: string): number {
   return parseDateString(dateStr).getDay()
 }
 
+// Next date (today included) matching a DB day of week (0=Mon…6=Sun)
+export function getNextDateForDbDay(dbDay: number, fromDate: string = getTodayString()): string {
+  const fromDbDay = jsToDbDayOfWeek(getJsDayOfWeek(fromDate))
+  const offset = (dbDay - fromDbDay + 7) % 7
+  return addDays(fromDate, offset)
+}
+
 // Short Turkish day names indexed by JS day (0=Sun)
 const SHORT_DAY_NAMES = ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct']
 
