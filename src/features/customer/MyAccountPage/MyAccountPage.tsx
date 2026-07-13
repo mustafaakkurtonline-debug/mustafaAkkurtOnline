@@ -31,14 +31,9 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
 
 function AppointmentCard({
   appointment,
-  onCancel,
 }: {
   appointment: AppointmentRow
-  onCancel?: (id: string) => void
 }) {
-  const canCancel = onCancel !== undefined &&
-    (appointment.status === 'pending' || appointment.status === 'confirmed')
-
   return (
     <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3.5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
@@ -60,19 +55,6 @@ function AppointmentCard({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <StatusBadge status={appointment.status} />
-          {canCancel && (
-            <button
-              type="button"
-              onClick={() => { onCancel(appointment.id) }}
-              title="Randevuyu iptal et"
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors cursor-pointer"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
     </div>
@@ -84,18 +66,6 @@ export function MyAccountPage() {
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [appointments, setAppointments] = useState<AppointmentRow[] | null>(null)
-  const [cancelledId, setCancelledId] = useState<string | null>(null)
-
-  const handleCancel = async (id: string): Promise<void> => {
-    if (!window.confirm('Randevunuzu iptal etmek istediğinize emin misiniz?')) return
-    const { data, error } = await supabase.rpc('cancel_my_appointment', {
-      p_appointment_id: id,
-      p_phone: normalizePhone(phone),
-    })
-    if (error !== null || data !== true) return
-    setCancelledId(id)
-    setAppointments(prev => prev?.filter(a => a.id !== id) ?? null)
-  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault()
@@ -121,7 +91,6 @@ export function MyAccountPage() {
   }
 
   const today = getTodayString()
-  const showCancelHint = cancelledId !== null
 
   if (isLoading) {
     return (
@@ -152,18 +121,7 @@ export function MyAccountPage() {
           Geri
         </button>
 
-        {showCancelHint && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-start gap-3">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 mt-0.5 shrink-0">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <p className="text-green-700 text-sm">
-              Randevunuz iptal edildi. Yeni randevu almak için ana sayfaya gidin.
-            </p>
-          </div>
-        )}
-
-        {appointments.length === 0 && !showCancelHint ? (
+        {appointments.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
@@ -183,13 +141,7 @@ export function MyAccountPage() {
                   Yaklaşan Randevular
                 </h3>
                 <div className="space-y-3">
-                  {upcoming.map(a => (
-                    <AppointmentCard
-                      key={a.id}
-                      appointment={a}
-                      onCancel={(id) => { void handleCancel(id) }}
-                    />
-                  ))}
+                  {upcoming.map(a => <AppointmentCard key={a.id} appointment={a} />)}
                 </div>
               </section>
             )}
