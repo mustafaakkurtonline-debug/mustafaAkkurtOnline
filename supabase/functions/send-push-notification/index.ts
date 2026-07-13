@@ -176,9 +176,19 @@ Deno.serve(async (req: Request) => {
   const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!
   const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!
 
+  // "2026-07-15" → "15 Temmuz Salı" (gün adı dahil)
+  const dateLabel = appointment.appointment_date
+    ? new Date(`${appointment.appointment_date}T00:00:00`).toLocaleDateString('tr-TR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      })
+    : ''
+  const timeLabel = (appointment.appointment_time ?? '').slice(0, 5)
+
   const notificationPayload = JSON.stringify({
     title: 'Yeni Randevu 🗓',
-    body: `${appointment.customer_name} · ${(appointment.appointment_time ?? '').slice(0, 5)}`,
+    body: `${appointment.customer_name}\n${dateLabel} · saat ${timeLabel}`,
     tag: `appt-${appointment.id}`,
   })
 
