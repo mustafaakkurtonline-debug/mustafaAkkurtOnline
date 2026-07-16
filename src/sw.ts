@@ -29,7 +29,9 @@ registerRoute(
 )
 
 // ------------------------------------------------------------------
-// Web Push: uygulama kapalıyken gelen bildirimler
+// Web Push: her durumda göster — panel açıkken de.
+// Realtime tarafı da aynı tag ile bildirim gösterdiğinden, aynı randevu
+// için ikinci bildirim öncekinin yerine geçer; çift bildirim oluşmaz.
 // ------------------------------------------------------------------
 self.addEventListener('push', (event: PushEvent) => {
   if (!event.data) return
@@ -37,23 +39,15 @@ self.addEventListener('push', (event: PushEvent) => {
   const data = event.data.json() as { title: string; body: string; tag?: string }
 
   event.waitUntil(
-    // Uygulama zaten açık ve odaklanmışsa push gösterme (Realtime halleder)
-    self.clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clients) => {
-        const isAppFocused = clients.some((c) => c.focused)
-        if (isAppFocused) return
-
-        return self.registration.showNotification(data.title, {
-          body: data.body,
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-192x192.png',
-          tag: data.tag ?? 'appointment',
-          requireInteraction: true,
-          // vibrate TS tiplerinde yok ama tüm Android tarayıcıları destekler
-          ...({ vibrate: [200, 100, 200] } as NotificationOptions),
-        })
-      }),
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-192x192.png',
+      tag: data.tag ?? 'appointment',
+      requireInteraction: true,
+      // vibrate TS tiplerinde yok ama tüm Android tarayıcıları destekler
+      ...({ vibrate: [200, 100, 200] } as NotificationOptions),
+    }),
   )
 })
 

@@ -16,21 +16,28 @@ async function showAppointmentNotification(payload: AppointmentPayload): Promise
 
   const { customer_name, appointment_date, appointment_time, service_id, id } = payload
 
-  const { data: service } = await supabase
-    .from('services')
-    .select('name')
-    .eq('id', service_id)
-    .single()
-
-  const serviceName = service?.name ?? 'Randevu'
+  // Hizmet adı alınamazsa bildirim yine de gösterilir
+  let serviceName = 'Randevu'
+  try {
+    const { data: service } = await supabase
+      .from('services')
+      .select('name')
+      .eq('id', service_id)
+      .single()
+    if (service?.name) serviceName = service.name
+  } catch {
+    // sorgu başarısız olsa da bildirimi engelleme
+  }
 
   // Android Chrome'da new Notification() sayfa bağlamında çalışmaz;
   // sistem bildirimi yalnızca service worker üzerinden gösterilebilir.
+  // Tag, push bildirimiyle aynı formattadır (appt-<id>): aynı randevu için
+  // iki kanaldan gelen bildirimler tek bildirime birleşir.
   const registration = await navigator.serviceWorker.ready
   await registration.showNotification('Yeni Randevu 🗓', {
     body: `${customer_name} — ${serviceName}\n${formatDateLong(appointment_date)}, saat ${formatTime(appointment_time)}`,
     icon: '/icons/icon-192x192.png',
-    tag: `appointment-${id}`,
+    tag: `appt-${id}`,
   })
 }
 
@@ -91,6 +98,8 @@ export function useAdminNotifications(): AdminNotificationsResult {
 
     void registerPushSubscription()
 
+    // Kanal, hata durumunda kaldırılmaz: realtime-js bağlantı kopunca
+    // (ekran kilidi, ağ değişimi) kanalı kendisi yeniden kurar.
     const channel = supabase
       .channel('admin-new-appointments')
       .on<AppointmentPayload>(
@@ -98,9 +107,7 @@ export function useAdminNotifications(): AdminNotificationsResult {
         { event: 'INSERT', schema: 'public', table: 'appointments' },
         (payload) => { void showAppointmentNotification(payload.new) },
       )
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') void supabase.removeChannel(channel)
-      })
+      .subscribe()
 
     return () => { void supabase.removeChannel(channel) }
   }, [notifPermission, supported])
