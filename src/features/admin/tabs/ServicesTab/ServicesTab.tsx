@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAdminServices } from '@/hooks/useAdminServices'
 import { ServiceForm } from '@/features/admin/components/ServiceForm/ServiceForm'
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch/ToggleSwitch'
 import type { Service } from '@/types/admin'
 
 function EditIcon() {
@@ -97,20 +98,11 @@ export function ServicesTab() {
             </div>
 
             <div className="flex items-center gap-2 ml-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => { void handleToggleActive(service) }}
-                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                  service.is_active ? 'bg-brand-500' : 'bg-gray-300'
-                }`}
-                title={service.is_active ? 'Pasife al' : 'Aktife al'}
-              >
-                <span
-                  className={`absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
-                    service.is_active ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
+              <ToggleSwitch
+                checked={service.is_active}
+                onChange={() => { void handleToggleActive(service) }}
+                label={service.is_active ? 'Pasife al' : 'Aktife al'}
+              />
               <button
                 type="button"
                 onClick={() => { setEditingService(service) }}

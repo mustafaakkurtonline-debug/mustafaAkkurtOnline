@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useReservedSlots } from '@/hooks/useReservedSlots'
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch/ToggleSwitch'
 import { formatTime, formatDateLong, getTodayString, getNextDateForDbDay, getJsDayOfWeek, jsToDbDayOfWeek } from '@/utils/dateUtils'
 import type { ReservedSlot, ReservedSlotException } from '@/types/admin'
 
@@ -119,11 +120,20 @@ export function ReservedSlotsSection() {
         return (
           <div
             key={slot.id}
-            className={`bg-white rounded-xl p-3 mb-2 border border-gray-100 shadow-sm ${!slot.is_active ? 'opacity-50' : ''}`}
+            className="bg-white rounded-xl p-3 mb-2 border border-gray-100 shadow-sm"
           >
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-gray-900 text-sm font-semibold">{slot.customer_name}</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-semibold truncate ${slot.is_active ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {slot.customer_name}
+                  </p>
+                  {!slot.is_active && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-surface-100 text-gray-400 border border-gray-200 shrink-0">
+                      Pasif
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-500 text-xs mt-0.5">
                   {DAY_NAMES[slot.day_of_week] ?? `Gün ${slot.day_of_week}`} · {formatTime(slot.slot_time)} · {slot.duration_minutes} dk
                 </p>
@@ -132,22 +142,17 @@ export function ReservedSlotsSection() {
                   {slot.end_date ? ` → ${slot.end_date}` : ' → Süresiz'}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => { void handleToggleActive(slot) }}
-                  className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${slot.is_active ? 'bg-brand-500' : 'bg-gray-300'}`}
-                  title={slot.is_active ? 'Pasife al' : 'Aktife al'}
-                >
-                  <span
-                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${slot.is_active ? 'translate-x-4' : 'translate-x-0.5'}`}
-                  />
-                </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <ToggleSwitch
+                  checked={slot.is_active}
+                  onChange={() => { void handleToggleActive(slot) }}
+                  label={slot.is_active ? 'Pasife al' : 'Aktife al'}
+                />
                 {slot.is_active && (
                   <button
                     type="button"
                     onClick={() => { setExceptionSlot(slot) }}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors cursor-pointer"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors cursor-pointer"
                     title="Tek tarihe özel değişiklik (ertele / o gün yok)"
                   >
                     <CalendarOffIcon />
@@ -156,7 +161,7 @@ export function ReservedSlotsSection() {
                 <button
                   type="button"
                   onClick={() => { setEditingSlot(slot) }}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-surface-100 text-gray-500 hover:bg-surface-200 transition-colors cursor-pointer"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-100 text-gray-500 hover:bg-surface-200 transition-colors cursor-pointer"
                   title="Düzenle"
                 >
                   <EditIcon />
@@ -164,7 +169,7 @@ export function ReservedSlotsSection() {
                 <button
                   type="button"
                   onClick={() => { void handleDelete(slot) }}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors cursor-pointer"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors cursor-pointer"
                   title="Sil"
                 >
                   <TrashIcon />
@@ -485,17 +490,16 @@ function SlotForm({ slot, onSuccess, onCancel }: SlotFormProps) {
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.is_active}
-              onClick={() => { update({ is_active: !form.is_active }) }}
-              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${form.is_active ? 'bg-brand-500' : 'bg-gray-300'}`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${form.is_active ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </button>
-            <span className="text-gray-600 text-sm">Aktif</span>
+          <div className="flex items-center justify-between gap-3 bg-surface-50 border border-gray-200 rounded-xl px-3 py-3">
+            <div className="min-w-0">
+              <p className="text-gray-900 text-sm font-medium">Slot aktif</p>
+              <p className="text-gray-400 text-xs mt-0.5">Pasifken bu saat müşterilere açılır.</p>
+            </div>
+            <ToggleSwitch
+              checked={form.is_active}
+              onChange={() => { update({ is_active: !form.is_active }) }}
+              label="Slot aktif"
+            />
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
