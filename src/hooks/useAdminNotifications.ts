@@ -107,6 +107,22 @@ async function registerPushSubscription(): Promise<void> {
   await saveSubscription(subscription)
 }
 
+// Teknik hataları berberin anlayacağı Türkçe açıklamaya çevirir
+function toFriendlyPushError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err)
+
+  if (err.name === 'AbortError') {
+    return 'Telefonun bildirim servisine (Google) ulaşılamadı. Play Store\'dan ' +
+      'Google Play Hizmetleri ve Chrome\'u güncelleyip telefonu yeniden başlatın. ' +
+      'Google servisleri olmayan telefonlarda (örn. Huawei) bildirim desteklenmez.'
+  }
+  if (err.name === 'NotAllowedError') {
+    return 'Tarayıcı bildirim iznini engelliyor. Telefon ayarlarından Chrome için ' +
+      'bildirimlere izin verildiğinden emin olun.'
+  }
+  return err.name !== 'Error' ? `${err.name}: ${err.message}` : err.message
+}
+
 export type PushRegistrationState = 'idle' | 'registering' | 'registered' | 'failed'
 
 interface AdminNotificationsResult {
@@ -142,11 +158,7 @@ export function useAdminNotifications(): AdminNotificationsResult {
       .catch((err: unknown) => {
         if (cancelled) return
         setPushState('failed')
-        if (err instanceof Error) {
-          setPushError(err.name !== 'Error' ? `${err.name}: ${err.message}` : err.message)
-        } else {
-          setPushError(String(err))
-        }
+        setPushError(toFriendlyPushError(err))
       })
 
     return () => { cancelled = true }
