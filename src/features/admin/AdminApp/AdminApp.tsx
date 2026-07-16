@@ -59,7 +59,7 @@ export function AdminApp() {
   const [showIOSGuide, setShowIOSGuide] = useState(false)
   const navigate = useNavigate()
 
-  const { notifPermission, enableNotifications } = useAdminNotifications()
+  const { notifPermission, pushState, pushError, enableNotifications, retryPushRegistration } = useAdminNotifications()
 
   // Capture install prompt before it disappears
   useEffect(() => {
@@ -140,6 +140,35 @@ export function AdminApp() {
           </div>
         </div>
       </header>
+
+      {/* Push kayıt durumu: cihazın bildirim alıp alamayacağını gösterir */}
+      {notifPermission === 'granted' && pushState === 'registering' && (
+        <div className="bg-surface-100 border-b border-gray-200 px-4 py-2">
+          <p className="text-gray-500 text-xs">Bildirim kaydı yapılıyor…</p>
+        </div>
+      )}
+      {notifPermission === 'granted' && pushState === 'registered' && (
+        <div className="bg-green-50 border-b border-green-100 px-4 py-2 flex items-center gap-2">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 shrink-0">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <p className="text-green-700 text-xs">Bu cihaz yeni randevu bildirimlerine kayıtlı</p>
+        </div>
+      )}
+      {notifPermission === 'granted' && pushState === 'failed' && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2.5 flex items-center justify-between gap-3">
+          <p className="text-red-700 text-xs min-w-0">
+            Bildirim kaydı başarısız: {pushError ?? 'bilinmeyen hata'}
+          </p>
+          <button
+            type="button"
+            onClick={retryPushRegistration}
+            className="shrink-0 text-red-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 transition-colors cursor-pointer"
+          >
+            Tekrar Dene
+          </button>
+        </div>
+      )}
 
       {/* iOS install guide modal */}
       {showIOSGuide && (

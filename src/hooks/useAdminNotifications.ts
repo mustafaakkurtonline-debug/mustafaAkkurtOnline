@@ -50,39 +50,71 @@ function vapidKeyToUint8Array(base64url: string): Uint8Array {
   return buf
 }
 
+const SW_READY_TIMEOUT_MS = 10000
+
 async function saveSubscription(sub: PushSubscription): Promise<void> {
   const json = sub.toJSON()
   const endpoint = json.endpoint
   const p256dh = json.keys?.p256dh
   const auth = json.keys?.auth
-  if (!endpoint || !p256dh || !auth) return
+  if (!endpoint || !p256dh || !auth) throw new Error('Abonelik bilgileri eksik')
 
-  await supabase
+  const { error } = await supabase
     .from('push_subscriptions')
     .upsert({ endpoint, p256dh, auth }, { onConflict: 'endpoint' })
+  if (error) throw new Error(`Veritabanına kaydedilemedi: ${error.message}`)
+}
+
+function keysEqual(a: ArrayBuffer | null, b: Uint8Array): boolean {
+  if (a === null) return false
+  const av = new Uint8Array(a)
+  if (av.length !== b.length) return false
+  return av.every((v, i) => v === b[i])
 }
 
 // İzin zaten verilmiş varsayılarak çağrılır — kendi içinde izin istemez.
+// Başarısızlıkta anlamlı bir Error fırlatır; çağıran taraf UI'da gösterir.
 async function registerPushSubscription(): Promise<void> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+  if (!('serviceWorker' in navigator)) throw new Error('Bu tarayıcı service worker desteklemiyor')
+  if (!('PushManager' in window)) throw new Error('Bu tarayıcı web push desteklemiyor')
 
   const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
-  if (!vapidPublicKey) return
+  if (!vapidPublicKey) throw new Error('VAPID anahtarı yapılandırılmamış')
 
-  const registration = await navigator.serviceWorker.ready
+  const registration = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => { reject(new Error('Service worker hazır olmadı (zaman aşımı)')) }, SW_READY_TIMEOUT_MS)
+    }),
+  ])
+
+  const applicationServerKey = vapidKeyToUint8Array(vapidPublicKey)
   const existing = await registration.pushManager.getSubscription()
-  if (existing) { await saveSubscription(existing); return }
+
+  if (existing) {
+    if (keysEqual(existing.options.applicationServerKey, applicationServerKey)) {
+      await saveSubscription(existing)
+      return
+    }
+    // Farklı (eski) VAPID anahtarıyla yapılmış abonelik push alamaz — yenile
+    await existing.unsubscribe()
+  }
 
   const subscription = await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: vapidKeyToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
+    applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
   })
   await saveSubscription(subscription)
 }
 
+export type PushRegistrationState = 'idle' | 'registering' | 'registered' | 'failed'
+
 interface AdminNotificationsResult {
   notifPermission: NotificationPermission
+  pushState: PushRegistrationState
+  pushError: string | null
   enableNotifications: () => Promise<void>
+  retryPushRegistration: () => void
 }
 
 export function useAdminNotifications(): AdminNotificationsResult {
@@ -91,15 +123,41 @@ export function useAdminNotifications(): AdminNotificationsResult {
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
     supported ? Notification.permission : 'denied',
   )
+  const [pushState, setPushState] = useState<PushRegistrationState>('idle')
+  const [pushError, setPushError] = useState<string | null>(null)
+  const [registerTick, setRegisterTick] = useState<number>(0)
 
-  // İzin verildiğinde Realtime + push subscription başlat
+  // İzin verildiğinde push subscription kaydını yap ve sonucu UI'a bildir
+  useEffect(() => {
+    if (!supported || notifPermission !== 'granted') return
+    let cancelled = false
+
+    setPushState('registering')
+    setPushError(null)
+
+    registerPushSubscription()
+      .then(() => {
+        if (!cancelled) setPushState('registered')
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setPushState('failed')
+        if (err instanceof Error) {
+          setPushError(err.name !== 'Error' ? `${err.name}: ${err.message}` : err.message)
+        } else {
+          setPushError(String(err))
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [notifPermission, supported, registerTick])
+
+  // İzin verildiğinde Realtime kanalını başlat.
+  // Kanal, hata durumunda kaldırılmaz: realtime-js bağlantı kopunca
+  // (ekran kilidi, ağ değişimi) kanalı kendisi yeniden kurar.
   useEffect(() => {
     if (!supported || notifPermission !== 'granted') return
 
-    void registerPushSubscription()
-
-    // Kanal, hata durumunda kaldırılmaz: realtime-js bağlantı kopunca
-    // (ekran kilidi, ağ değişimi) kanalı kendisi yeniden kurar.
     const channel = supabase
       .channel('admin-new-appointments')
       .on<AppointmentPayload>(
@@ -119,5 +177,9 @@ export function useAdminNotifications(): AdminNotificationsResult {
     setNotifPermission(result)
   }
 
-  return { notifPermission, enableNotifications }
+  const retryPushRegistration = (): void => {
+    setRegisterTick(t => t + 1)
+  }
+
+  return { notifPermission, pushState, pushError, enableNotifications, retryPushRegistration }
 }
