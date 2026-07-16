@@ -1,0 +1,6 @@
+project_id = "mustafa-akkurt-online"
+
+# Webhook ile çağrılır; kimlik doğrulama fonksiyon içindeki
+# WEBHOOK_SECRET kontrolüyle yapılır (gateway JWT'si kapalı).
+[functions.send-push-notification]
+verify_jwt = false
