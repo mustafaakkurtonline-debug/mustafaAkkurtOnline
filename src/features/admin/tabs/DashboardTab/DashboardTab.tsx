@@ -3,8 +3,10 @@ import type { ChangeEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAdminAppointments } from '@/hooks/useAdminAppointments'
 import { useBlockedSlots } from '@/hooks/useBlockedSlots'
+import { useDayReservedSlots } from '@/hooks/useDayReservedSlots'
+import type { DayReservedSlot } from '@/hooks/useDayReservedSlots'
 import { AppointmentCard } from '@/features/admin/components/AppointmentCard/AppointmentCard'
-import { getTodayString, addDays, formatTime } from '@/utils/dateUtils'
+import { getTodayString, addDays, formatTime, timeToMinutes, minutesToTime } from '@/utils/dateUtils'
 import type { BlockedSlot } from '@/types/admin'
 
 function formatDateHeader(dateStr: string): string {
@@ -18,8 +20,19 @@ function formatDateHeader(dateStr: string): string {
 export function DashboardTab() {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayString())
   const { appointments, isLoading, refetch } = useAdminAppointments(selectedDate)
+  const { dayReservedSlots, isLoading: isReservedLoading } = useDayReservedSlots(selectedDate)
   const today = getTodayString()
   const isToday = selectedDate === today
+  const isDayLoading = isLoading || isReservedLoading
+
+  // Randevular ve sabit müşteri slotları saat sırasına göre tek listede gösterilir
+  const dayEntries: Array<
+    | { kind: 'appointment'; time: string; appointment: (typeof appointments)[number] }
+    | { kind: 'reserved'; time: string; slot: DayReservedSlot }
+  > = [
+    ...appointments.map(apt => ({ kind: 'appointment' as const, time: apt.appointment_time, appointment: apt })),
+    ...dayReservedSlots.map(slot => ({ kind: 'reserved' as const, time: slot.slot_time, slot })),
+  ].sort((a, b) => a.time.localeCompare(b.time))
 
   return (
     <div>
@@ -54,28 +67,62 @@ export function DashboardTab() {
         </button>
       </div>
 
-      {isLoading && (
+      {isDayLoading && (
         <div className="flex justify-center py-12">
           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
-      {!isLoading && appointments.length === 0 && (
+      {!isDayLoading && dayEntries.length === 0 && (
         <div className="text-center py-8">
           <p className="text-gray-400 text-sm">Bu tarihte randevu yok.</p>
         </div>
       )}
 
-      {!isLoading && appointments.length > 0 && (
+      {!isDayLoading && dayEntries.length > 0 && (
         <div>
-          <p className="text-gray-400 text-xs mb-3">{appointments.length} randevu</p>
-          {appointments.map(apt => (
-            <AppointmentCard key={apt.id} appointment={apt} onUpdate={refetch} />
-          ))}
+          <p className="text-gray-400 text-xs mb-3">
+            {appointments.length} randevu
+            {dayReservedSlots.length > 0 && ` · ${dayReservedSlots.length} sabit müşteri`}
+          </p>
+          {dayEntries.map(entry =>
+            entry.kind === 'appointment' ? (
+              <AppointmentCard key={entry.appointment.id} appointment={entry.appointment} onUpdate={refetch} />
+            ) : (
+              <ReservedSlotCard key={`reserved-${entry.slot.id}`} slot={entry.slot} />
+            ),
+          )}
         </div>
       )}
 
       <BlockedSlotsSection date={selectedDate} />
+    </div>
+  )
+}
+
+function ReservedSlotCard({ slot }: { slot: DayReservedSlot }) {
+  const startTime = formatTime(slot.slot_time)
+  const endTime = minutesToTime(timeToMinutes(startTime) + slot.duration_minutes)
+
+  return (
+    <div className="bg-brand-50 border border-brand-200 rounded-xl px-4 py-3 mb-2 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center shrink-0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="text-gray-900 text-sm font-semibold truncate">{slot.customer_name}</p>
+          <p className="text-brand-600 text-xs mt-0.5">
+            Sabit müşteri{slot.is_moved && ' · bu tarihe özel saat'}
+          </p>
+        </div>
+      </div>
+      <p className="text-gray-700 text-sm font-medium shrink-0">
+        {startTime} – {endTime}
+      </p>
     </div>
   )
 }
