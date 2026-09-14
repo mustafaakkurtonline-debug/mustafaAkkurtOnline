@@ -8,6 +8,8 @@ import {
   addDays,
   formatTime,
   getNextDateForDbDay,
+  splitAppointmentsByRecency,
+  type RecencyAppointment,
 } from './dateUtils'
 
 describe('jsToDbDayOfWeek', () => {
@@ -88,6 +90,73 @@ describe('formatTime', () => {
   })
   it('passes through HH:mm unchanged', () => {
     expect(formatTime('09:30')).toBe('09:30')
+  })
+})
+
+describe('splitAppointmentsByRecency', () => {
+  interface TestAppointment extends RecencyAppointment {
+    id: string
+  }
+
+  function appt(
+    id: string,
+    appointment_date: string,
+    appointment_time: string,
+    status: RecencyAppointment['status'] = 'confirmed',
+  ): TestAppointment {
+    return { id, appointment_date, appointment_time, status }
+  }
+
+  const today = '2026-07-14'
+
+  it("keeps today's appointment in upcoming even when older/newer appointments exceed a display cap", () => {
+    // Regression test: a customer with a long history plus a future booking
+    // must still see today's appointment among the "upcoming" results.
+    const appointments = [
+      appt('future-1', '2026-08-01', '10:00'),
+      appt('future-2', '2026-07-20', '10:00'),
+      appt('today', today, '15:00'),
+      appt('past-1', '2026-06-01', '09:00', 'completed'),
+      appt('past-2', '2026-05-01', '09:00', 'completed'),
+      appt('past-3', '2026-04-01', '09:00', 'completed'),
+      appt('past-4', '2026-03-01', '09:00', 'completed'),
+      appt('past-5', '2026-02-01', '09:00', 'completed'),
+    ]
+
+    const { upcoming } = splitAppointmentsByRecency(appointments, today)
+
+    expect(upcoming.map(a => a.id)).toContain('today')
+  })
+
+  it('classifies past by date, and by completed/no_show status regardless of date', () => {
+    const appointments = [
+      appt('todays-visit', today, '11:00', 'confirmed'),
+      appt('yesterday', '2026-07-13', '09:00', 'confirmed'),
+      appt('future-but-completed', '2026-08-01', '09:00', 'completed'),
+      appt('future-but-no-show', '2026-08-02', '09:00', 'no_show'),
+    ]
+
+    const { upcoming, past } = splitAppointmentsByRecency(appointments, today)
+
+    expect(upcoming.map(a => a.id)).toEqual(['todays-visit'])
+    expect(past.map(a => a.id).sort()).toEqual(
+      ['yesterday', 'future-but-completed', 'future-but-no-show'].sort()
+    )
+  })
+
+  it('sorts upcoming soonest-first and past most-recent-first', () => {
+    const appointments = [
+      appt('later', '2026-07-20', '09:00'),
+      appt('soonest', today, '09:00'),
+      appt('middle', today, '18:00'),
+      appt('older-past', '2026-06-01', '09:00', 'completed'),
+      appt('newer-past', '2026-07-10', '09:00', 'completed'),
+    ]
+
+    const { upcoming, past } = splitAppointmentsByRecency(appointments, today)
+
+    expect(upcoming.map(a => a.id)).toEqual(['soonest', 'middle', 'later'])
+    expect(past.map(a => a.id)).toEqual(['newer-past', 'older-past'])
   })
 })
 

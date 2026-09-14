@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '@/lib/supabase'
-import { formatPhoneInput, isValidTurkishPhone, normalizePhone, formatDateLong, formatTime, getTodayString } from '@/utils/dateUtils'
+import { formatPhoneInput, isValidTurkishPhone, normalizePhone, formatDateLong, formatTime, getTodayString, splitAppointmentsByRecency } from '@/utils/dateUtils'
 import type { AppointmentStatus } from '@/types/database'
 
 const MAX_VISIBLE_APPOINTMENTS = 5
@@ -103,13 +103,9 @@ export function MyAccountPage() {
   }
 
   if (appointments !== null) {
-    const visibleAppointments = appointments.slice(0, MAX_VISIBLE_APPOINTMENTS)
-    const upcoming = visibleAppointments.filter(
-      a => a.appointment_date >= today && a.status !== 'completed' && a.status !== 'no_show'
-    )
-    const past = visibleAppointments.filter(
-      a => a.appointment_date < today || a.status === 'completed' || a.status === 'no_show'
-    )
+    const { upcoming: allUpcoming, past: allPast } = splitAppointmentsByRecency(appointments, today)
+    const upcoming = allUpcoming.slice(0, MAX_VISIBLE_APPOINTMENTS)
+    const past = allPast.slice(0, MAX_VISIBLE_APPOINTMENTS)
 
     return (
       <div className="pt-6 pb-4 space-y-6">

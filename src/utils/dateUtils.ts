@@ -1,3 +1,5 @@
+import type { AppointmentStatus } from '@/types/database'
+
 // Convert JS day (0=Sun…6=Sat) to DB day (0=Mon…6=Sun)
 export function jsToDbDayOfWeek(jsDay: number): number {
   return (jsDay + 6) % 7
@@ -126,4 +128,47 @@ export function formatDuration(minutes: number): string {
   if (h === 0) return `${m} dk`
   if (m === 0) return `${h} sa`
   return `${h} sa ${m} dk`
+}
+
+export interface RecencyAppointment {
+  appointment_date: string
+  appointment_time: string
+  status: AppointmentStatus
+}
+
+// Split appointments into upcoming (today or later, not completed/no_show) and past,
+// sorting upcoming soonest-first and past most-recent-first. Splitting must happen
+// before any "top N" truncation — otherwise a customer with several future/past
+// appointments can have today's appointment pushed out by unrelated ones.
+export function splitAppointmentsByRecency<T extends RecencyAppointment>(
+  appointments: T[],
+  today: string,
+): { upcoming: T[]; past: T[] } {
+  const upcoming: T[] = []
+  const past: T[] = []
+
+  for (const appointment of appointments) {
+    const isPast =
+      appointment.appointment_date < today ||
+      appointment.status === 'completed' ||
+      appointment.status === 'no_show'
+    if (isPast) {
+      past.push(appointment)
+    } else {
+      upcoming.push(appointment)
+    }
+  }
+
+  upcoming.sort((a, b) =>
+    a.appointment_date === b.appointment_date
+      ? a.appointment_time.localeCompare(b.appointment_time)
+      : a.appointment_date.localeCompare(b.appointment_date)
+  )
+  past.sort((a, b) =>
+    a.appointment_date === b.appointment_date
+      ? b.appointment_time.localeCompare(a.appointment_time)
+      : b.appointment_date.localeCompare(a.appointment_date)
+  )
+
+  return { upcoming, past }
 }
