@@ -1,14 +1,21 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { NetworkFirst, CacheFirst } from 'workbox-strategies'
+import { NetworkFirst } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
+
+// Eski sürümlerde sayfa gezinmeleri CacheFirst ile bu cache'e yazılıyordu; cihaz
+// bir kez önbelleğe aldıktan sonra yeni deploy'ları hiç görmüyordu. Cache'i
+// silmezsek o cihazlar eski uygulamada kilitli kalır.
+const LEGACY_PAGES_CACHE = 'pages-cache'
 
 // Yeni SW yüklenince hemen devralır; eski SW'nin "waiting" kalması engellenir.
 self.addEventListener('install', () => { self.skipWaiting() })
 self.addEventListener('activate', (event: ExtendableEvent) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    caches.delete(LEGACY_PAGES_CACHE).then(() => self.clients.claim()),
+  )
 })
 
 cleanupOutdatedCaches()
@@ -20,10 +27,12 @@ registerRoute(
   new NetworkFirst({ cacheName: 'supabase-api-cache' }),
 )
 
-// Admin rotaları offline desteklenmez
+// Sayfa gezinmeleri precache'teki index.html'den karşılanır. Precache her
+// deploy'da yeni revision aldığı için kullanıcı güncel sürümü alır.
+// Admin rotaları offline desteklenmez.
 registerRoute(
   new NavigationRoute(
-    new CacheFirst({ cacheName: 'pages-cache' }),
+    createHandlerBoundToURL('/index.html'),
     { denylist: [/^\/admin/] },
   ),
 )

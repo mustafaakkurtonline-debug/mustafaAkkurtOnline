@@ -158,6 +158,46 @@ describe('splitAppointmentsByRecency', () => {
     expect(upcoming.map(a => a.id)).toEqual(['soonest', 'middle', 'later'])
     expect(past.map(a => a.id)).toEqual(['newer-past', 'older-past'])
   })
+
+  it('shows every appointment a customer has this week, including today, even when other future bookings crowd the same phone number', () => {
+    // Reproduces the reported bug: a shared/family phone number with several
+    // OTHER future bookings (e.g. next month, for a different family member)
+    // ranked ahead of this week's own appointments in the RPC's
+    // date DESC ordering. MAX_VISIBLE_APPOINTMENTS in MyAccountPage.tsx is 5.
+    //
+    // Under the old "slice top 5, then split" logic, sorting these by
+    // appointment_date DESC puts the 4 far-future bookings first, so today's
+    // (Wed) and Friday's appointments would be sliced off before ever being
+    // classified as upcoming. This test proves the new split-before-slice
+    // logic keeps them.
+    const MAX_VISIBLE_APPOINTMENTS = 5
+    const appointments = [
+      appt('mon-this-week', '2026-07-13', '10:00', 'completed'), // Monday, already visited
+      appt('wed-this-week', today, '15:00'),                     // Wednesday = today
+      appt('fri-this-week', '2026-07-17', '11:00'),              // Friday, later this week
+      appt('future-other-1', '2026-08-01', '09:00'),
+      appt('future-other-2', '2026-08-15', '09:00'),
+      appt('future-other-3', '2026-09-01', '09:00'),
+      appt('future-other-4', '2026-09-15', '09:00'),
+    ]
+
+    // Sanity check: confirm the old bug is real for this fixture — sorting
+    // the raw RPC order (date DESC) and slicing top 5 BEFORE splitting would
+    // drop today's own appointment entirely.
+    const oldBuggySlice = [...appointments]
+      .sort((a, b) => b.appointment_date.localeCompare(a.appointment_date))
+      .slice(0, MAX_VISIBLE_APPOINTMENTS)
+    expect(oldBuggySlice.map(a => a.id)).not.toContain('wed-this-week')
+
+    const { upcoming, past } = splitAppointmentsByRecency(appointments, today)
+    const visibleUpcoming = upcoming.slice(0, MAX_VISIBLE_APPOINTMENTS)
+    const visiblePast = past.slice(0, MAX_VISIBLE_APPOINTMENTS)
+
+    expect(visibleUpcoming.map(a => a.id)).toEqual([
+      'wed-this-week', 'fri-this-week', 'future-other-1', 'future-other-2', 'future-other-3',
+    ])
+    expect(visiblePast.map(a => a.id)).toContain('mon-this-week')
+  })
 })
 
 describe('getNextDateForDbDay', () => {
