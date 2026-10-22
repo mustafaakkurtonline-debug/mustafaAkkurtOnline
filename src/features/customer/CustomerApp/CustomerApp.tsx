@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CustomerLayout } from '@/components/layout/CustomerLayout/CustomerLayout'
+import { AddressMigrationBanner } from '@/components/layout/AddressMigrationBanner/AddressMigrationBanner'
 import { BottomNav } from '@/components/layout/BottomNav/BottomNav'
 import type { CustomerTab } from '@/components/layout/BottomNav/BottomNav'
 import { AppointmentPage } from '@/features/appointment/AppointmentPage/AppointmentPage'
@@ -80,6 +81,7 @@ export function CustomerApp() {
 
   return (
     <CustomerLayout>
+      <AddressMigrationBanner />
       <InstallBanner />
 
       {/* Home tab — stays mounted to preserve wizard state */}
