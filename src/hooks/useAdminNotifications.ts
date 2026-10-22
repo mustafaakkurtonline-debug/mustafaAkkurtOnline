@@ -74,9 +74,27 @@ function keysEqual(a: ArrayBuffer | null, b: Uint8Array): boolean {
 
 // İzin zaten verilmiş varsayılarak çağrılır — kendi içinde izin istemez.
 // Başarısızlıkta anlamlı bir Error fırlatır; çağıran taraf UI'da gösterir.
+// iOS'ta web push yalnızca ana ekrana eklenmiş (standalone) uygulamada çalışır;
+// Safari sekmesinde PushManager hiç tanımlı olmaz.
+function isIosBrowserTab(): boolean {
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  if (!isIos) return false
+  return !window.matchMedia('(display-mode: standalone)').matches
+}
+
 async function registerPushSubscription(): Promise<void> {
   if (!('serviceWorker' in navigator)) throw new Error('Bu tarayıcı service worker desteklemiyor')
-  if (!('PushManager' in window)) throw new Error('Bu tarayıcı web push desteklemiyor')
+  if (!('PushManager' in window)) {
+    if (isIosBrowserTab()) {
+      throw new Error(
+        'iPhone\'da bildirim için uygulamayı önce ana ekrana eklemelisiniz. ' +
+        'Safari\'de paylaş düğmesine (kutu-ok simgesi) dokunup "Ana Ekrana Ekle" deyin, ' +
+        'sonra ana ekrandaki simgeden açıp bildirimleri tekrar açın.',
+      )
+    }
+    throw new Error('Bu tarayıcı web push desteklemiyor')
+  }
 
   const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
   if (!vapidPublicKey) throw new Error('VAPID anahtarı yapılandırılmamış')
@@ -108,10 +126,17 @@ async function registerPushSubscription(): Promise<void> {
 }
 
 // Teknik hataları berberin anlayacağı Türkçe açıklamaya çevirir
-function toFriendlyPushError(err: unknown): string {
+export function toFriendlyPushError(err: unknown): string {
   if (!(err instanceof Error)) return String(err)
 
   if (err.name === 'AbortError') {
+    // Tarayıcı izin vermiş görünse de push kaydı ayrıca engellenmiş olabilir;
+    // bu durumda Play Hizmetleri yönlendirmesi yanlış olur.
+    if (err.message.toLowerCase().includes('permission denied')) {
+      return 'Tarayıcı bu site için bildirim kaydını engelliyor. Adres çubuğundaki ' +
+        'kilit simgesine dokunup Bildirimler iznini "İzin ver" yapın, ayrıca telefon ' +
+        'ayarlarından tarayıcının bildirim izninin açık olduğunu kontrol edip tekrar deneyin.'
+    }
     return 'Telefonun bildirim servisine (Google) ulaşılamadı. Play Store\'dan ' +
       'Google Play Hizmetleri ve Chrome\'u güncelleyip telefonu yeniden başlatın. ' +
       'Google servisleri olmayan telefonlarda (örn. Huawei) bildirim desteklenmez.'
