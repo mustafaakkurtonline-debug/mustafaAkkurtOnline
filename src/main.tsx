@@ -1,3 +1,5 @@
+// İlk import olmalı: Supabase istemcisi oluşturulmadan önce depoları güvenceye alır
+import './lib/storageGuard'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
