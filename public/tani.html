@@ -11,6 +11,7 @@
       ulaşılamadığını gösterir. Hiçbir dış dosyaya bağlı değildir ve service
       worker tarafından karşılanmaz (sw.ts), böylece uygulama bozuk olsa da açılır.
       Sonuç ekrana yazılır ve ulaşılabiliyorsa Sentry'ye gönderilir.
+      Kendi adresimiz üzerinden yapılan denemeler worker/index.ts'teki aracıyı sınar.
     -->
     <h1>Bağlantı Testi</h1>
     <p id="status">Test ediliyor, lütfen bekleyin…</p>
@@ -20,10 +21,13 @@
     <script>
       (function () {
         var CHECK_TIMEOUT_MS = 10000;
+        // Önce site üzerinden (sentry.io engelli olabilir), olmazsa doğrudan gönderilir
+        var SENTRY_TUNNEL_PATH = '/sentry-tunnel';
         var SENTRY_ENVELOPE_URL = 'https://o4512306059608064.ingest.de.sentry.io/api/4512306068914256/envelope/?sentry_version=7&sentry_key=00dc75e621e55e26b2d5e4491097c689';
         var CHECKS = [
           { name: 'Uygulama sunucusu (panel sayfası)', url: '/admin', sameOrigin: true },
-          { name: 'Supabase (randevu veritabanı)', url: 'https://pwtwpwdoblczzzqchqul.supabase.co/auth/v1/health' },
+          { name: 'Supabase site üzerinden (uygulamanın kullandığı)', url: '/sb/auth/v1/health', sameOrigin: true },
+          { name: 'Supabase doğrudan', url: 'https://pwtwpwdoblczzzqchqul.supabase.co/auth/v1/health' },
           { name: 'Google Fonts (yazı tipi)', url: 'https://fonts.googleapis.com/css2?family=Inter&display=swap' },
           { name: 'Sentry (hata raporu)', url: 'https://o4512306059608064.ingest.de.sentry.io/' }
         ];
@@ -83,7 +87,11 @@
           };
           var body = JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }) + '\n' +
             JSON.stringify({ type: 'event' }) + '\n' + JSON.stringify(event);
-          window.fetch(SENTRY_ENVELOPE_URL, { method: 'POST', body: body }).catch(function () {});
+          window.fetch(SENTRY_TUNNEL_PATH, { method: 'POST', body: body }).then(function (res) {
+            if (!res.ok) throw new Error('tünel ' + res.status);
+          }).catch(function () {
+            window.fetch(SENTRY_ENVELOPE_URL, { method: 'POST', body: body }).catch(function () {});
+          });
         }
 
         function runAll(index) {

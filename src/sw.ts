@@ -27,6 +27,13 @@ registerRoute(
   new NetworkFirst({ cacheName: 'supabase-api-cache' }),
 )
 
+// Güncel adreste Supabase'e site üzerinden gidilir (/sb, worker/index.ts);
+// veri sorguları aynı şekilde önbelleğe alınır. Oturum istekleri hariç.
+registerRoute(
+  ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/sb/rest/'),
+  new NetworkFirst({ cacheName: 'supabase-api-cache' }),
+)
+
 // Sayfa gezinmeleri precache'teki index.html'den karşılanır. Precache her
 // deploy'da yeni revision aldığı için kullanıcı güncel sürümü alır.
 registerRoute(

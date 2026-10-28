@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { SENTRY_DSN } from './src/constants/sentry'
+import { CANONICAL_HOST, SENTRY_TUNNEL_PATH } from './src/constants/site'
 
 // Sentry'de hatanın hangi sürümden geldiğini gösterir. Cloudflare Workers Builds ve
 // Vercel commit kimliğini build ortamına koyar; yerel build'de 'local' kalır.
@@ -37,6 +38,8 @@ function injectBootWatchdogConfig(): Plugin {
     transformIndexHtml(html, ctx) {
       return html
         .replace('__SENTRY_DSN__', SENTRY_DSN)
+        .replace('__CANONICAL_HOST__', CANONICAL_HOST)
+        .replace('__SENTRY_TUNNEL_PATH__', SENTRY_TUNNEL_PATH)
         .replace('__BOOT_REPORTING_ENABLED__', String(ctx.server === undefined))
     },
   }

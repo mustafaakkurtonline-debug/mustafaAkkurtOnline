@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { isOutdatedAddress, CANONICAL_HOST } from './site'
+import { isOutdatedAddress, hasApiProxy, CANONICAL_HOST } from './site'
+
+describe('hasApiProxy', () => {
+  it('yalnızca Cloudflare\'deki güncel adreste aracı kullanılır', () => {
+    expect(hasApiProxy(CANONICAL_HOST)).toBe(true)
+    expect(hasApiProxy('mustafa-akkurt-online.vercel.app')).toBe(false)
+    expect(hasApiProxy('localhost:5173')).toBe(false)
+  })
+})
 
 describe('isOutdatedAddress', () => {
   it('güncel adreste uyarı göstermez', () => {

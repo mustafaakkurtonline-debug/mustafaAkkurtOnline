@@ -15,6 +15,8 @@
       (function () {
         var BOOT_TIMEOUT_MS = 15000;
         var SENTRY_DSN = '__SENTRY_DSN__';
+        var CANONICAL_HOST = '__CANONICAL_HOST__';
+        var SENTRY_TUNNEL_PATH = '__SENTRY_TUNNEL_PATH__';
         var REPORTING_ENABLED = __BOOT_REPORTING_ENABLED__;
         var EVENT_ID_LENGTH = 32;
         var HEX_RADIX = 16;
@@ -27,7 +29,9 @@
           firstError = event.message || target.src || target.href || 'bilinmeyen hata';
         }, true);
 
+        // Güncel adreste rapor sitenin kendi adresinden gider (sentry.io engelli olabilir)
         function envelopeUrl() {
+          if (location.host === CANONICAL_HOST) return SENTRY_TUNNEL_PATH;
           var match = /^https:\/\/([^@]+)@([^/]+)\/(\d+)$/.exec(SENTRY_DSN);
           if (!match) return null;
           return 'https://' + match[2] + '/api/' + match[3] + '/envelope/?sentry_version=7&sentry_key=' + match[1];

@@ -29,3 +29,6 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Cloudflare wrangler yerel durum dosyaları
+.wrangler/

@@ -1,0 +1,17 @@
+// Cloudflare Workers yapılandırması (GitHub'a gönderilince Workers Builds kullanır).
+// Site dist klasöründen sunulur; yalnızca /sb/* ve /sentry-tunnel istekleri
+// worker/index.ts'e uğrar ve oradan Supabase / Sentry'ye iletilir.
+{
+  "name": "mustafaakkurtonline",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/sb/*", "/sentry-tunnel"]
+  },
+  "vars": {
+    "SUPABASE_ORIGIN": "https://pwtwpwdoblczzzqchqul.supabase.co"
+  }
+}

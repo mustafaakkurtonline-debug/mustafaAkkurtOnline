@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/react'
 import type { Breadcrumb, ErrorEvent } from '@sentry/react'
 import { SENTRY_DSN } from '@/constants/sentry'
+import { hasApiProxy, SENTRY_TUNNEL_PATH } from '@/constants/site'
 
 // Türk cep numaraları: 5XXXXXXXXX, 05XXXXXXXXX, 905XXXXXXXXX, +905XXXXXXXXX.
 // Lookbehind (?<!…) kullanılmaz: iOS 16.4 öncesi Safari bu ifadeyi tanımaz ve
@@ -33,6 +34,8 @@ export function initSentry(): void {
     // Yerel geliştirme ve testlerde hata gönderilmez
     enabled: import.meta.env.PROD,
     environment: window.location.hostname,
+    // sentry.io'ya ulaşamayan bağlantılarda raporlar sitenin kendi adresinden gider
+    tunnel: hasApiProxy(window.location.host) ? SENTRY_TUNNEL_PATH : undefined,
     // Cihazın hangi sürümü çalıştırdığı görülür (eski önbellekte kalan cihazlar)
     release: __APP_RELEASE__,
     initialScope: {
