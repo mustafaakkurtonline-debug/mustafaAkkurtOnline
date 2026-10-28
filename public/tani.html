@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bağlantı Testi — Mustafa Akkurt</title>
+  </head>
+  <body>
+    <!--
+      Bağlantı tanı sayfası: uygulama telefonda açılmadığında hangi adrese
+      ulaşılamadığını gösterir. Hiçbir dış dosyaya bağlı değildir ve service
+      worker tarafından karşılanmaz (sw.ts), böylece uygulama bozuk olsa da açılır.
+      Sonuç ekrana yazılır ve ulaşılabiliyorsa Sentry'ye gönderilir.
+    -->
+    <h1>Bağlantı Testi</h1>
+    <p id="status">Test ediliyor, lütfen bekleyin…</p>
+    <ol id="results"></ol>
+    <p id="device"></p>
+
+    <script>
+      (function () {
+        var CHECK_TIMEOUT_MS = 10000;
+        var SENTRY_ENVELOPE_URL = 'https://o4512306059608064.ingest.de.sentry.io/api/4512306068914256/envelope/?sentry_version=7&sentry_key=00dc75e621e55e26b2d5e4491097c689';
+        var CHECKS = [
+          { name: 'Uygulama sunucusu (panel sayfası)', url: '/admin', sameOrigin: true },
+          { name: 'Supabase (randevu veritabanı)', url: 'https://pwtwpwdoblczzzqchqul.supabase.co/auth/v1/health' },
+          { name: 'Google Fonts (yazı tipi)', url: 'https://fonts.googleapis.com/css2?family=Inter&display=swap' },
+          { name: 'Sentry (hata raporu)', url: 'https://o4512306059608064.ingest.de.sentry.io/' }
+        ];
+        var EVENT_ID_LENGTH = 32;
+        var HEX_RADIX = 16;
+        var MS_PER_SECOND = 1000;
+
+        var resultsEl = document.getElementById('results');
+        var results = [];
+
+        function check(item, done) {
+          var started = Date.now();
+          var finished = false;
+          function finish(ok, detail) {
+            if (finished) return;
+            finished = true;
+            var seconds = ((Date.now() - started) / MS_PER_SECOND).toFixed(1);
+            var line = (ok ? 'TAMAM: ' : 'ULAŞILAMADI: ') + item.name + ' (' + seconds + ' sn' + (detail ? ', ' + detail : '') + ')';
+            var li = document.createElement('li');
+            li.textContent = line;
+            resultsEl.appendChild(li);
+            results.push(line);
+            done();
+          }
+          if (!window.fetch) { finish(false, 'tarayıcı fetch desteklemiyor'); return; }
+          var timer = setTimeout(function () { finish(false, 'zaman aşımı'); }, CHECK_TIMEOUT_MS);
+          var options = item.sameOrigin ? { cache: 'no-store' } : { mode: 'no-cors', cache: 'no-store' };
+          window.fetch(item.url, options).then(function (res) {
+            clearTimeout(timer);
+            finish(true, item.sameOrigin ? 'durum ' + res.status : '');
+          }).catch(function (err) {
+            clearTimeout(timer);
+            finish(false, String(err && err.message || err));
+          });
+        }
+
+        function storageWorks() {
+          try {
+            localStorage.setItem('__tani__', '1');
+            localStorage.removeItem('__tani__');
+            return 'açık';
+          } catch (e) { return 'engelli'; }
+        }
+
+        function report(device) {
+          var eventId = '';
+          for (var i = 0; i < EVENT_ID_LENGTH; i++) eventId += Math.floor(Math.random() * HEX_RADIX).toString(HEX_RADIX);
+          var event = {
+            event_id: eventId,
+            timestamp: Date.now() / MS_PER_SECOND,
+            platform: 'javascript',
+            level: 'info',
+            environment: location.hostname,
+            message: 'Bağlantı testi sonucu',
+            request: { url: location.origin + location.pathname, headers: { 'User-Agent': navigator.userAgent } },
+            extra: { results: results.join(' | '), device: device }
+          };
+          var body = JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }) + '\n' +
+            JSON.stringify({ type: 'event' }) + '\n' + JSON.stringify(event);
+          window.fetch(SENTRY_ENVELOPE_URL, { method: 'POST', body: body }).catch(function () {});
+        }
+
+        function runAll(index) {
+          if (index >= CHECKS.length) {
+            var device = 'Cihaz: ' + navigator.userAgent +
+              ' | Ana ekrandan açıldı: ' + (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches ? 'evet' : 'hayır') +
+              ' | Depolama: ' + storageWorks();
+            document.getElementById('device').textContent = device;
+            document.getElementById('status').textContent = 'Test bitti. Bu ekranın fotoğrafını gönderin.';
+            if (window.fetch) report(device);
+            return;
+          }
+          check(CHECKS[index], function () { runAll(index + 1); });
+        }
+
+        runAll(0);
+      })();
+    </script>
+  </body>
+</html>

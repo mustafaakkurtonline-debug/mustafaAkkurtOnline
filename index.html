@@ -4,45 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- PWA theme -->
-    <meta name="theme-color" content="#CA8A04" />
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <meta name="description" content="Mustafa Akkurt Berberi — Online randevu sistemi" />
-
-    <!-- iOS PWA desteği -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="M. Akkurt" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
-
-    <title>Mustafa Akkurt Berberi</title>
-  </head>
-  <body>
-<div id="root"></div>
-
-    <!-- Uygulama açılamazsa beyaz ekran yerine gösterilir (bkz. açılış denetimi) -->
-    <div id="boot-fallback" hidden class="min-h-screen bg-surface-50 flex flex-col items-center justify-center px-6 text-center">
-      <p class="text-gray-900 font-semibold text-lg">Uygulama açılamadı</p>
-      <p class="text-gray-500 text-sm mt-2 max-w-xs">
-        İnternet bağlantınızı kontrol edip yeniden deneyin. Sorun devam ederse telefonunuzun yazılımını güncelleyin.
-      </p>
-      <button type="button" id="boot-reload" class="mt-6 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold text-sm cursor-pointer">
-        Yeniden Yükle
-      </button>
-    </div>
-
     <script>
       // Açılış denetimi: uygulama BOOT_TIMEOUT_MS içinde açılmazsa (eski tarayıcının
       // tanımadığı kod, yüklenemeyen dosya vb.) uyarı gösterilir ve durum Sentry'ye
       // bildirilir. Bu durumda uygulamanın kendi Sentry bağlantısı hiç çalışmadığı
       // için rapor burada, bağımlılıksız gönderilir. Uygulama açılınca main.tsx
       // uyarı bloğunu kaldırır. Eski tarayıcılarda da çalışsın diye ES5 yazılmıştır.
+      // Stil dosyalarından önce durmalı: tarayıcı, inmeyi bekleyen bir stil dosyasının
+      // arkasındaki betiği çalıştırmaz; o zaman denetim de hiç başlamazdı.
       (function () {
         var BOOT_TIMEOUT_MS = 15000;
         var SENTRY_DSN = '__SENTRY_DSN__';
@@ -81,6 +50,7 @@
             request: { url: location.origin + location.pathname, headers: { 'User-Agent': navigator.userAgent } },
             extra: {
               first_error: firstError || 'yok',
+              ready_state: document.readyState,
               sw_controlled: String(!!(navigator.serviceWorker && navigator.serviceWorker.controller))
             }
           };
@@ -98,6 +68,43 @@
         }, BOOT_TIMEOUT_MS);
       })();
     </script>
+
+    <!-- PWA theme -->
+    <meta name="theme-color" content="#CA8A04" />
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <!-- Yazı tipi ekranı bekletmez: Google Fonts'a ulaşılamazsa sayfa yine çizilir
+         (yalnızca sistem yazı tipiyle). media="print" ile indirilir, inince uygulanır. -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+    <meta name="description" content="Mustafa Akkurt Berberi — Online randevu sistemi" />
+
+    <!-- iOS PWA desteği -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="M. Akkurt" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
+
+    <title>Mustafa Akkurt Berberi</title>
+  </head>
+  <body>
+<div id="root"></div>
+
+    <!-- Uygulama açılamazsa beyaz ekran yerine gösterilir (bkz. açılış denetimi) -->
+    <div id="boot-fallback" hidden class="min-h-screen bg-surface-50 flex flex-col items-center justify-center px-6 text-center">
+      <p class="text-gray-900 font-semibold text-lg">Uygulama açılamadı</p>
+      <p class="text-gray-500 text-sm mt-2 max-w-xs">
+        İnternet bağlantınızı kontrol edip yeniden deneyin. Sorun devam ederse telefonunuzun yazılımını güncelleyin.
+      </p>
+      <button type="button" id="boot-reload" class="mt-6 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold text-sm cursor-pointer">
+        Yeniden Yükle
+      </button>
+    </div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

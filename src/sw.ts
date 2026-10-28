@@ -32,7 +32,8 @@ registerRoute(
 registerRoute(
   new NavigationRoute(
     createHandlerBoundToURL('/index.html'),
-    { denylist: [/^\/admin/] },
+    // Bağlantı tanı sayfası (public/tani.html) her zaman sunucudan açılır
+    { denylist: [/^\/admin/, /^\/tani/] },
   ),
 )
 
