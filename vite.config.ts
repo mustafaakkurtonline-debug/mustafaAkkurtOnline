@@ -1,14 +1,56 @@
 import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { SENTRY_DSN } from './src/constants/sentry'
+
+// Sentry'de hatanın hangi sürümden geldiğini gösterir. Cloudflare Workers Builds ve
+// Vercel commit kimliğini build ortamına koyar; yerel build'de 'local' kalır.
+const APP_RELEASE = (process.env.WORKERS_CI_COMMIT_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA ?? 'local').slice(0, 7)
+
+// RegExp lookbehind (?<= ?<!) iOS 16.4 öncesi Safari'de söz dizimi hatasıdır ve
+// derleyici bunu dönüştüremez: tek bir ifade tüm uygulamayı beyaz ekranda bırakır.
+// Paket (bağımlılıklar dahil) böyle bir ifade içerirse build durdurulur.
+const REGEX_LOOKBEHIND = /\(\?<[=!]/
+
+function rejectRegexLookbehind(): Plugin {
+  return {
+    name: 'reject-regex-lookbehind',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type === 'chunk' && REGEX_LOOKBEHIND.test(output.code)) {
+          this.error(`${output.fileName} RegExp lookbehind içeriyor; eski iPhone'larda uygulama hiç açılmaz.`)
+        }
+      }
+    },
+  }
+}
+
+// index.html'deki açılış denetimi Sentry adresini buradan alır; yerelde rapor göndermez
+function injectBootWatchdogConfig(): Plugin {
+  return {
+    name: 'inject-boot-watchdog-config',
+    transformIndexHtml(html, ctx) {
+      return html
+        .replace('__SENTRY_DSN__', SENTRY_DSN)
+        .replace('__BOOT_REPORTING_ENABLED__', String(ctx.server === undefined))
+    },
+  }
+}
 
 export default defineConfig({
+  define: {
+    __APP_RELEASE__: JSON.stringify(APP_RELEASE),
+  },
   plugins: [
     react(),
     tailwindcss(),
+    rejectRegexLookbehind(),
+    injectBootWatchdogConfig(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -75,6 +117,11 @@ export default defineConfig({
       },
     },
   ],
+  build: {
+    // Vite'ın varsayılanı Safari 16.4'tür; güncellenmemiş eski iPhone'lar da
+    // uygulamayı açabilsin diye söz dizimi daha eski tarayıcılara göre üretilir.
+    target: ['es2020', 'safari15', 'ios15', 'chrome87', 'edge88', 'firefox78'],
+  },
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {

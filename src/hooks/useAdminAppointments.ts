@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { reportWarning } from '@/lib/sentry'
 import type { AppointmentWithService } from '@/types/admin'
 
 interface UseAdminAppointmentsReturn {
   appointments: AppointmentWithService[]
   isLoading: boolean
+  hasError: boolean
   refetch: () => void
 }
 
 export function useAdminAppointments(date: string): UseAdminAppointmentsReturn {
   const [appointments, setAppointments] = useState<AppointmentWithService[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [hasError, setHasError] = useState<boolean>(false)
   const [tick, setTick] = useState<number>(0)
 
   const refetch = useCallback((): void => {
@@ -23,14 +26,20 @@ export function useAdminAppointments(date: string): UseAdminAppointmentsReturn {
     setIsLoading(true)
 
     const fetchData = async (): Promise<void> => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('appointments')
         .select('*, services(name, duration_minutes, price)')
         .eq('appointment_date', date)
         .order('appointment_time', { ascending: true })
 
       if (cancelled) return
-      setAppointments((data as AppointmentWithService[]) ?? [])
+      // Hata "randevu yok" gibi gösterilmez; berber listeyi eksik sanmasın
+      if (error) {
+        reportWarning('Takvim randevuları yüklenemedi', { error: error.message })
+      } else {
+        setAppointments((data as AppointmentWithService[]) ?? [])
+      }
+      setHasError(error !== null)
       setIsLoading(false)
     }
 
@@ -54,5 +63,5 @@ export function useAdminAppointments(date: string): UseAdminAppointmentsReturn {
     return () => { void supabase.removeChannel(channel) }
   }, [date])
 
-  return { appointments, isLoading, refetch }
+  return { appointments, isLoading, hasError, refetch }
 }

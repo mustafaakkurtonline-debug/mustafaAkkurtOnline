@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { reportWarning } from '@/lib/sentry'
 
 interface UseAuthReturn {
   session: Session | null
@@ -18,7 +19,10 @@ export function useAuth(): UseAuthReturn {
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => { setIsLoading(false) }, SESSION_CHECK_TIMEOUT_MS)
+    const timeoutId = window.setTimeout(() => {
+      setIsLoading(false)
+      reportWarning('Oturum kontrolü zaman aşımına uğradı')
+    }, SESSION_CHECK_TIMEOUT_MS)
 
     supabase.auth.getSession()
       .then(({ data: { session: initialSession } }) => {

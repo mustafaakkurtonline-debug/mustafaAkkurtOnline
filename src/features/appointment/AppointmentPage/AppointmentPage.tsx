@@ -7,6 +7,7 @@ import { ConfirmationStep } from '@/features/appointment/ConfirmationStep/Confir
 import { SuccessStep } from '@/features/appointment/SuccessStep/SuccessStep'
 import { supabase } from '@/lib/supabase'
 import { formatDateLong, formatTime, formatDuration, normalizePhone } from '@/utils/dateUtils'
+import { showSystemNotification } from '@/utils/serviceWorker'
 import type { Service, WizardStep, AppointmentFormData } from '@/types/appointment'
 
 interface WizardState {
@@ -148,11 +149,12 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     // Browser push notification
     if ('Notification' in window && Notification.permission !== 'denied') {
       const body = `${service.name} · ${formatDateLong(date)} ${formatTime(time)}`
-      const show = () => {
-        new Notification('Randevunuz Alındı! ✓', {
+      const show = (): void => {
+        // Randevu zaten kaydedildi; bildirim gösterilemezse müşteriye hata yansıtılmaz
+        showSystemNotification('Randevunuz Alındı! ✓', {
           body,
           icon: '/icons/icon-192x192.png',
-        })
+        }).catch(() => {})
       }
       if (Notification.permission === 'granted') {
         show()

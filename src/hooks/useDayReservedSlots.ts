@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { reportWarning } from '@/lib/sentry'
 import { getJsDayOfWeek, jsToDbDayOfWeek } from '@/utils/dateUtils'
 
 // Seçili tarihte fiilen geçerli olan sabit müşteri slotu.
@@ -15,11 +16,19 @@ export interface DayReservedSlot {
 interface UseDayReservedSlotsReturn {
   dayReservedSlots: DayReservedSlot[]
   isLoading: boolean
+  hasError: boolean
+  refetch: () => void
 }
 
 export function useDayReservedSlots(date: string): UseDayReservedSlotsReturn {
   const [dayReservedSlots, setDayReservedSlots] = useState<DayReservedSlot[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [hasError, setHasError] = useState<boolean>(false)
+  const [tick, setTick] = useState<number>(0)
+
+  const refetch = useCallback((): void => {
+    setTick(t => t + 1)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -28,7 +37,7 @@ export function useDayReservedSlots(date: string): UseDayReservedSlotsReturn {
     const load = async (): Promise<void> => {
       const dbDay = jsToDbDayOfWeek(getJsDayOfWeek(date))
 
-      const [{ data: slots }, { data: exceptions }] = await Promise.all([
+      const [{ data: slots, error: slotsError }, { data: exceptions, error: exceptionsError }] = await Promise.all([
         supabase
           .from('reserved_slots')
           .select('id, customer_name, slot_time, duration_minutes')
@@ -43,6 +52,14 @@ export function useDayReservedSlots(date: string): UseDayReservedSlotsReturn {
       ])
 
       if (cancelled) return
+
+      const error = slotsError ?? exceptionsError
+      if (error) {
+        reportWarning('Sabit müşteri slotları yüklenemedi', { error: error.message })
+        setHasError(true)
+        setIsLoading(false)
+        return
+      }
 
       const exceptionBySlotId = new Map(
         (exceptions ?? []).map(e => [e.reserved_slot_id, e.new_time]),
@@ -66,12 +83,13 @@ export function useDayReservedSlots(date: string): UseDayReservedSlotsReturn {
       result.sort((a, b) => a.slot_time.localeCompare(b.slot_time))
 
       setDayReservedSlots(result)
+      setHasError(false)
       setIsLoading(false)
     }
 
     void load()
     return () => { cancelled = true }
-  }, [date])
+  }, [date, tick])
 
-  return { dayReservedSlots, isLoading }
+  return { dayReservedSlots, isLoading, hasError, refetch }
 }

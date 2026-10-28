@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDateLong, formatTime } from '@/utils/dateUtils'
+import { showSystemNotification, waitForServiceWorker } from '@/utils/serviceWorker'
 
 interface AppointmentPayload {
   id: string
@@ -29,12 +30,9 @@ async function showAppointmentNotification(payload: AppointmentPayload): Promise
     // sorgu başarısız olsa da bildirimi engelleme
   }
 
-  // Android Chrome'da new Notification() sayfa bağlamında çalışmaz;
-  // sistem bildirimi yalnızca service worker üzerinden gösterilebilir.
   // Tag, push bildirimiyle aynı formattadır (appt-<id>): aynı randevu için
   // iki kanaldan gelen bildirimler tek bildirime birleşir.
-  const registration = await navigator.serviceWorker.ready
-  await registration.showNotification('Yeni Randevu 🗓', {
+  await showSystemNotification('Yeni Randevu 🗓', {
     body: `${customer_name} — ${serviceName}\n${formatDateLong(appointment_date)}, saat ${formatTime(appointment_time)}`,
     icon: '/icons/icon-192x192.png',
     tag: `appt-${id}`,
@@ -49,8 +47,6 @@ function vapidKeyToUint8Array(base64url: string): Uint8Array {
   for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i)
   return buf
 }
-
-const SW_READY_TIMEOUT_MS = 10000
 
 async function saveSubscription(sub: PushSubscription): Promise<void> {
   const json = sub.toJSON()
@@ -99,12 +95,7 @@ async function registerPushSubscription(): Promise<void> {
   const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
   if (!vapidPublicKey) throw new Error('VAPID anahtarı yapılandırılmamış')
 
-  const registration = await Promise.race([
-    navigator.serviceWorker.ready,
-    new Promise<never>((_, reject) => {
-      window.setTimeout(() => { reject(new Error('Service worker hazır olmadı (zaman aşımı)')) }, SW_READY_TIMEOUT_MS)
-    }),
-  ])
+  const registration = await waitForServiceWorker()
 
   const applicationServerKey = vapidKeyToUint8Array(vapidPublicKey)
   const existing = await registration.pushManager.getSubscription()

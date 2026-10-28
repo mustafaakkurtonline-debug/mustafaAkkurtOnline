@@ -4,6 +4,11 @@ import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 
 const getSession = vi.fn()
+const reportWarning = vi.fn()
+
+vi.mock('@/lib/sentry', () => ({
+  reportWarning: (message: string) => { reportWarning(message) },
+}))
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -42,6 +47,7 @@ async function flushPromises(): Promise<void> {
 
 beforeEach(() => {
   getSession.mockReset()
+  reportWarning.mockReset()
 })
 
 afterEach(() => {
@@ -63,6 +69,8 @@ describe('useAuth', () => {
 
     expect(result.current?.isLoading).toBe(false)
     expect(result.current?.isAuthenticated).toBe(false)
+    // Hata fırlatmayan takılmalar Sentry'ye ayrıca bildirilir
+    expect(reportWarning).toHaveBeenCalledOnce()
   })
 
   it('oturum kontrolü hata verirse yüklemeyi bırakır', async () => {
@@ -83,5 +91,6 @@ describe('useAuth', () => {
 
     expect(result.current?.isLoading).toBe(false)
     expect(result.current?.isAuthenticated).toBe(true)
+    expect(reportWarning).not.toHaveBeenCalled()
   })
 })

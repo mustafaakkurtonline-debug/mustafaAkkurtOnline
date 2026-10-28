@@ -25,6 +25,79 @@
   </head>
   <body>
 <div id="root"></div>
+
+    <!-- Uygulama açılamazsa beyaz ekran yerine gösterilir (bkz. açılış denetimi) -->
+    <div id="boot-fallback" hidden class="min-h-screen bg-surface-50 flex flex-col items-center justify-center px-6 text-center">
+      <p class="text-gray-900 font-semibold text-lg">Uygulama açılamadı</p>
+      <p class="text-gray-500 text-sm mt-2 max-w-xs">
+        İnternet bağlantınızı kontrol edip yeniden deneyin. Sorun devam ederse telefonunuzun yazılımını güncelleyin.
+      </p>
+      <button type="button" id="boot-reload" class="mt-6 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold text-sm cursor-pointer">
+        Yeniden Yükle
+      </button>
+    </div>
+
+    <script>
+      // Açılış denetimi: uygulama BOOT_TIMEOUT_MS içinde açılmazsa (eski tarayıcının
+      // tanımadığı kod, yüklenemeyen dosya vb.) uyarı gösterilir ve durum Sentry'ye
+      // bildirilir. Bu durumda uygulamanın kendi Sentry bağlantısı hiç çalışmadığı
+      // için rapor burada, bağımlılıksız gönderilir. Uygulama açılınca main.tsx
+      // uyarı bloğunu kaldırır. Eski tarayıcılarda da çalışsın diye ES5 yazılmıştır.
+      (function () {
+        var BOOT_TIMEOUT_MS = 15000;
+        var SENTRY_DSN = '__SENTRY_DSN__';
+        var REPORTING_ENABLED = __BOOT_REPORTING_ENABLED__;
+        var EVENT_ID_LENGTH = 32;
+        var HEX_RADIX = 16;
+        var MS_PER_SECOND = 1000;
+        var firstError = '';
+
+        window.addEventListener('error', function (event) {
+          if (firstError) return;
+          var target = event.target || {};
+          firstError = event.message || target.src || target.href || 'bilinmeyen hata';
+        }, true);
+
+        function envelopeUrl() {
+          var match = /^https:\/\/([^@]+)@([^/]+)\/(\d+)$/.exec(SENTRY_DSN);
+          if (!match) return null;
+          return 'https://' + match[2] + '/api/' + match[3] + '/envelope/?sentry_version=7&sentry_key=' + match[1];
+        }
+
+        function report() {
+          var url = envelopeUrl();
+          if (!REPORTING_ENABLED || !url || !window.fetch) return;
+          var eventId = '';
+          for (var i = 0; i < EVENT_ID_LENGTH; i++) eventId += Math.floor(Math.random() * HEX_RADIX).toString(HEX_RADIX);
+          var isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+          var event = {
+            event_id: eventId,
+            timestamp: Date.now() / MS_PER_SECOND,
+            platform: 'javascript',
+            level: 'error',
+            environment: location.hostname,
+            message: 'Uygulama açılamadı (açılış denetimi)',
+            tags: { boot_failure: 'true', display_mode: isStandalone ? 'standalone' : 'browser' },
+            request: { url: location.origin + location.pathname, headers: { 'User-Agent': navigator.userAgent } },
+            extra: {
+              first_error: firstError || 'yok',
+              sw_controlled: String(!!(navigator.serviceWorker && navigator.serviceWorker.controller))
+            }
+          };
+          var body = JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString() }) + '\n' +
+            JSON.stringify({ type: 'event' }) + '\n' + JSON.stringify(event);
+          window.fetch(url, { method: 'POST', body: body, keepalive: true }).catch(function () {});
+        }
+
+        window.setTimeout(function () {
+          var fallback = document.getElementById('boot-fallback');
+          if (!fallback) return;
+          fallback.hidden = false;
+          document.getElementById('boot-reload').addEventListener('click', function () { location.reload(); });
+          report();
+        }, BOOT_TIMEOUT_MS);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

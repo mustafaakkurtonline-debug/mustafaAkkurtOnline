@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL, matchPrecache } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
 
@@ -29,11 +29,24 @@ registerRoute(
 
 // Sayfa gezinmeleri precache'teki index.html'den karşılanır. Precache her
 // deploy'da yeni revision aldığı için kullanıcı güncel sürümü alır.
-// Admin rotaları offline desteklenmez.
 registerRoute(
   new NavigationRoute(
     createHandlerBoundToURL('/index.html'),
     { denylist: [/^\/admin/] },
+  ),
+)
+
+// Admin gezinmeleri precache'teki admin.html'den karşılanır: panel, sunucuya o an
+// ulaşılamasa bile açılır (beyaz ekran yerine) ve her /admin/... adresinde admin
+// manifest'i kullanılır. Cloudflare /admin/login gibi alt adreslere index.html
+// döndürdüğü için ağdan gelen sayfa bu rotaya uygun değildir. admin.html
+// precache'te yoksa sayfa ağdan istenir.
+const ADMIN_SHELL_URL = '/admin.html'
+
+registerRoute(
+  new NavigationRoute(
+    async ({ request }) => (await matchPrecache(ADMIN_SHELL_URL)) ?? fetch(request),
+    { allowlist: [/^\/admin/] },
   ),
 )
 

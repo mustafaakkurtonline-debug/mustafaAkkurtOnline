@@ -19,11 +19,22 @@ function formatDateHeader(dateStr: string): string {
 
 export function DashboardTab() {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayString())
-  const { appointments, isLoading, refetch } = useAdminAppointments(selectedDate)
-  const { dayReservedSlots, isLoading: isReservedLoading } = useDayReservedSlots(selectedDate)
+  const { appointments, isLoading, hasError, refetch } = useAdminAppointments(selectedDate)
+  const {
+    dayReservedSlots,
+    isLoading: isReservedLoading,
+    hasError: hasReservedError,
+    refetch: refetchReserved,
+  } = useDayReservedSlots(selectedDate)
   const today = getTodayString()
   const isToday = selectedDate === today
   const isDayLoading = isLoading || isReservedLoading
+  const hasDayError = hasError || hasReservedError
+
+  const retryDay = (): void => {
+    refetch()
+    refetchReserved()
+  }
 
   // Randevular ve sabit müşteri slotları saat sırasına göre tek listede gösterilir
   const dayEntries: Array<
@@ -73,13 +84,15 @@ export function DashboardTab() {
         </div>
       )}
 
-      {!isDayLoading && dayEntries.length === 0 && (
+      {!isDayLoading && hasDayError && <DayLoadError onRetry={retryDay} />}
+
+      {!isDayLoading && !hasDayError && dayEntries.length === 0 && (
         <div className="text-center py-8">
           <p className="text-gray-400 text-sm">Bu tarihte randevu yok.</p>
         </div>
       )}
 
-      {!isDayLoading && dayEntries.length > 0 && (
+      {!isDayLoading && !hasDayError && dayEntries.length > 0 && (
         <div>
           <p className="text-gray-400 text-xs mb-3">
             {appointments.length} randevu
@@ -96,6 +109,22 @@ export function DashboardTab() {
       )}
 
       <BlockedSlotsSection date={selectedDate} />
+    </div>
+  )
+}
+
+function DayLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-5 text-center">
+      <p className="text-red-700 text-sm font-semibold">Randevular yüklenemedi</p>
+      <p className="text-red-600 text-xs mt-1">İnternet bağlantınızı kontrol edip tekrar deneyin.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-3 px-4 py-2 rounded-lg bg-red-100 text-red-700 text-sm font-semibold hover:bg-red-200 transition-colors cursor-pointer"
+      >
+        Tekrar Dene
+      </button>
     </div>
   )
 }

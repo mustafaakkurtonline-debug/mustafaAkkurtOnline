@@ -10,9 +10,17 @@ describe('scrubPhoneNumbers', () => {
     expect(scrubPhoneNumbers('905307284006')).toBe('[telefon]')
   })
 
+  it('numaradan önceki karakteri korur', () => {
+    expect(scrubPhoneNumbers('tel: 05307284006, yedek 05551112233'))
+      .toBe('tel: [telefon], yedek [telefon]')
+    expect(scrubPhoneNumbers('{"phone":"05307284006"}')).toBe('{"phone":"[telefon]"}')
+  })
+
   it('telefon olmayan sayılara dokunmaz', () => {
     expect(scrubPhoneNumbers('timestamp 1761200000.123')).toBe('timestamp 1761200000.123')
     expect(scrubPhoneNumbers('saat 14:30, fiyat 250')).toBe('saat 14:30, fiyat 250')
+    // Daha uzun bir kimliğin parçası olan rakamlar numara sayılmaz
+    expect(scrubPhoneNumbers('id8805307284006')).toBe('id8805307284006')
   })
 })
 

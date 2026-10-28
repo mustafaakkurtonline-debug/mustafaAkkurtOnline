@@ -65,7 +65,10 @@ export function SuccessStep({ formData, appointmentId, onNewAppointment }: Succe
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
     if (Notification.permission !== 'granted') return
 
-    void subscribeAndSave(appointmentId).then((ok) => { if (ok) setReminderSet(true) })
+    // Abonelik kurulamazsa (bildirim servisi yok vb.) hatırlatma kurulmadı olarak kalır
+    subscribeAndSave(appointmentId)
+      .then((ok) => { if (ok) setReminderSet(true) })
+      .catch(() => {})
   }, [appointmentId])
 
   return (
