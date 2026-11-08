@@ -1,0 +1,5 @@
+# Cloudflare statik dosya başlıkları. Site arama motorlarında listelenmez:
+# Google sayfayı taradığında bu başlığı görür ve sonuçlardan çıkarır.
+# robots.txt ile tarama engellenmemeli, yoksa Google bu başlığı hiç okuyamaz.
+/*
+  X-Robots-Tag: noindex, nofollow

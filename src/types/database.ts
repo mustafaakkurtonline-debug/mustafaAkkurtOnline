@@ -150,6 +150,27 @@ export interface Database {
           }
         ]
       }
+      approved_customers: {
+        Row: {
+          id: string
+          customer_name: string
+          customer_phone: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          customer_name: string
+          customer_phone: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          customer_name?: string
+          customer_phone?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       banned_customers: {
         Row: {
           id: string
@@ -327,6 +348,10 @@ export interface Database {
       get_booked_slots: {
         Args: { p_date: string }
         Returns: { slot_time: string; end_time: string }[]
+      }
+      is_approved_customer: {
+        Args: { p_phone: string }
+        Returns: boolean
       }
     }
     Enums: {

@@ -1,4 +1,5 @@
 import { useServices } from '@/hooks/useServices'
+import { BrandHeader } from '@/components/layout/BrandHeader/BrandHeader'
 import { formatDuration } from '@/utils/dateUtils'
 import type { Service } from '@/types/appointment'
 
@@ -23,20 +24,7 @@ export function ServiceStep({ onSelect }: ServiceStepProps) {
 
   return (
     <div className="pt-10 pb-4">
-      {/* Branding header */}
-      <div className="mb-8 flex items-center gap-4">
-        <img
-          src="/icons/mustafaAkkurthair.png"
-          alt="Mustafa Akkurt"
-          className="w-16 h-16 rounded-2xl object-cover shadow-sm"
-        />
-        <div>
-          <h1 className="font-serif text-gray-900 text-3xl font-bold tracking-tight leading-tight">
-            Mustafa Akkurt
-          </h1>
-          <p className="text-gray-400 text-sm mt-0.5">Online Randevu</p>
-        </div>
-      </div>
+      <BrandHeader />
 
       <h2 className="text-gray-900 text-2xl font-bold mb-6">Hizmet Seçin</h2>
 

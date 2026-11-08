@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ReactElement } from 'react'
+import { PhoneStep } from '@/features/appointment/PhoneStep/PhoneStep'
 import { ServiceStep } from '@/features/appointment/ServiceStep/ServiceStep'
 import { DateTimeStep } from '@/features/appointment/DateTimeStep/DateTimeStep'
 import { CustomerFormStep } from '@/features/appointment/CustomerFormStep/CustomerFormStep'
@@ -8,6 +9,7 @@ import { SuccessStep } from '@/features/appointment/SuccessStep/SuccessStep'
 import { supabase } from '@/lib/supabase'
 import { formatDateLong, formatTime, formatDuration, normalizePhone } from '@/utils/dateUtils'
 import { showSystemNotification } from '@/utils/serviceWorker'
+import { readSavedPhone, savePhone } from '@/utils/savedPhone'
 import type { Service, WizardStep, AppointmentFormData } from '@/types/appointment'
 
 interface WizardState {
@@ -21,7 +23,7 @@ interface WizardState {
 }
 
 const INITIAL_STATE: WizardState = {
-  step: 'service',
+  step: 'phone',
   service: null,
   date: null,
   time: null,
@@ -29,6 +31,9 @@ const INITIAL_STATE: WizardState = {
   customerPhone: '',
   appointmentId: null,
 }
+
+// Supabase'in satır güvenliği reddi: kayıtlı olmayan numarayla randevu (migration 015)
+const RLS_VIOLATION_CODE = '42501'
 
 // Progress percentage per step for the summary bar
 const STEP_PROGRESS: Partial<Record<WizardStep, number>> = {
@@ -83,7 +88,7 @@ interface AppointmentPageProps {
 }
 
 export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = {}) {
-  const [wizard, setWizard] = useState<WizardState>(INITIAL_STATE)
+  const [wizard, setWizard] = useState<WizardState>(() => ({ ...INITIAL_STATE, customerPhone: readSavedPhone() }))
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -91,6 +96,15 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     const active = wizard.step === 'datetime' || wizard.step === 'form' || wizard.step === 'confirmation'
     onBookingFlowChange?.(active)
   }, [wizard.step, onBookingFlowChange])
+
+  const handlePhoneVerified = (customerPhone: string): void => {
+    savePhone(customerPhone)
+    setWizard(prev => ({ ...prev, customerPhone, step: 'service' }))
+  }
+
+  const handleChangePhone = (): void => {
+    setWizard(prev => ({ ...prev, step: 'phone' }))
+  }
 
   const handleServiceSelect = (service: Service): void => {
     setWizard(prev => ({ ...prev, service, step: 'datetime', time: null }))
@@ -108,8 +122,8 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     setWizard(prev => ({ ...prev, step: 'form' }))
   }
 
-  const handleFormSubmit = (customerName: string, customerPhone: string): void => {
-    setWizard(prev => ({ ...prev, customerName, customerPhone, step: 'confirmation' }))
+  const handleFormSubmit = (customerName: string): void => {
+    setWizard(prev => ({ ...prev, customerName, step: 'confirmation' }))
     setSubmitError(null)
   }
 
@@ -138,6 +152,9 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
       if (error.code === '23505' || error.code === '23P01') {
         setSubmitError('Bu saat az önce doldu. Lütfen başka bir saat seçin.')
         setWizard(prev => ({ ...prev, step: 'datetime', time: null }))
+      } else if (error.code === RLS_VIOLATION_CODE) {
+        // Numara, randevu akışı sürerken müşteri listesinden çıkarılmış
+        setSubmitError('Bu numara kayıtlı müşteri listemizde değil.')
       } else {
         setSubmitError('Randevu oluşturulamadı. Lütfen tekrar deneyin.')
       }
@@ -166,13 +183,17 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     }
   }
 
+  // Numara az önce doğrulandığı için yeni randevu doğrudan hizmet seçimiyle başlar
   const handleNewAppointment = (): void => {
-    setWizard(INITIAL_STATE)
+    setWizard(prev => ({ ...INITIAL_STATE, step: 'service', customerPhone: prev.customerPhone, customerName: prev.customerName }))
     setSubmitError(null)
   }
 
   const renderStep = (): ReactElement => {
     switch (wizard.step) {
+      case 'phone':
+        return <PhoneStep initialPhone={wizard.customerPhone} onVerified={handlePhoneVerified} />
+
       case 'service':
         return <ServiceStep onSelect={handleServiceSelect} />
 
@@ -194,9 +215,10 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
         return (
           <CustomerFormStep
             initialName={wizard.customerName}
-            initialPhone={wizard.customerPhone}
+            phone={wizard.customerPhone}
             onSubmit={handleFormSubmit}
             onBack={() => { setWizard(prev => ({ ...prev, step: 'datetime' })) }}
+            onChangePhone={handleChangePhone}
           />
         )
 

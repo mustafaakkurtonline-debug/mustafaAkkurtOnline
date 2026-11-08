@@ -1,0 +1,4 @@
+# Tarama serbest bırakılır ki arama motorları sayfalardaki "noindex" işaretini
+# görüp siteyi sonuçlardan çıkarsın (bkz. _headers).
+User-agent: *
+Allow: /

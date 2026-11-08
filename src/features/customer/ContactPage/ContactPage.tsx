@@ -1,7 +1,6 @@
 import { useWorkingHours } from '@/hooks/useWorkingHours'
 import { formatTime } from '@/utils/dateUtils'
-
-const PHONE = '0507 873 19 10'
+import { SHOP_PHONE as PHONE } from '@/constants/shop'
 
 const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
 

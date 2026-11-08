@@ -6,6 +6,7 @@ export type Service = Database['public']['Tables']['services']['Row']
 export type WorkingHour = Database['public']['Tables']['working_hours']['Row']
 export type BlockedDay = Database['public']['Tables']['blocked_days']['Row']
 export type BannedCustomer = Database['public']['Tables']['banned_customers']['Row']
+export type ApprovedCustomer = Database['public']['Tables']['approved_customers']['Row']
 export type ReservedSlot = Database['public']['Tables']['reserved_slots']['Row']
 export type ReservedSlotException = Database['public']['Tables']['reserved_slot_exceptions']['Row']
 
@@ -35,4 +36,4 @@ export interface BlockedSlot {
   created_at: string
 }
 
-export type AdminTab = 'dashboard' | 'services' | 'settings'
+export type AdminTab = 'dashboard' | 'customers' | 'services' | 'settings'

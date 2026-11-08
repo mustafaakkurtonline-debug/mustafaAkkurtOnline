@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { supabase } from '@/lib/supabase'
-import { normalizePhone, formatPhoneInput, isValidTurkishPhone } from '@/utils/dateUtils'
+import { formatPhoneInput } from '@/utils/dateUtils'
 import { MIN_NAME_LENGTH } from '@/constants/appointment'
 
 interface CustomerFormStepProps {
   initialName: string
-  initialPhone: string
-  onSubmit: (name: string, phone: string) => void
+  // İlk adımda (PhoneStep) doğrulanmış numara; burada değiştirilemez
+  phone: string
+  onSubmit: (name: string) => void
   onBack: () => void
+  onChangePhone: () => void
 }
 
 function KvkkModal({ onClose }: { onClose: () => void }) {
@@ -74,34 +75,20 @@ function KvkkModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function CustomerFormStep({ initialName, initialPhone, onSubmit, onBack }: CustomerFormStepProps) {
+export function CustomerFormStep({ initialName, phone, onSubmit, onBack, onChangePhone }: CustomerFormStepProps) {
   const [name, setName] = useState<string>(initialName)
-  const [phone, setPhone] = useState<string>(
-    initialPhone ? formatPhoneInput(initialPhone) : ''
-  )
   const [kvkkAccepted, setKvkkAccepted] = useState<boolean>(false)
   const [showKvkk, setShowKvkk] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
-  const [isChecking, setIsChecking] = useState<boolean>(false)
 
-  const handlePhoneChange = (value: string) => {
-    setPhone(formatPhoneInput(value))
-  }
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault()
     setError(null)
 
     const trimmedName = name.trim()
-    const digits = normalizePhone(phone)
 
     if (trimmedName.length < MIN_NAME_LENGTH) {
       setError('Ad soyad en az 3 karakter olmalı.')
-      return
-    }
-
-    if (!isValidTurkishPhone(phone)) {
-      setError('Geçerli bir telefon numarası girin. (05XX XXX XX XX)')
       return
     }
 
@@ -110,30 +97,7 @@ export function CustomerFormStep({ initialName, initialPhone, onSubmit, onBack }
       return
     }
 
-    setIsChecking(true)
-
-    const today = new Date().toISOString().slice(0, 10)
-
-    const { data: banned } = await supabase
-      .from('banned_customers')
-      .select('banned_until')
-      .eq('customer_phone', digits)
-      .gt('banned_until', today)
-      .limit(1)
-
-    setIsChecking(false)
-
-    if (banned && banned.length > 0) {
-      const until = new Date(banned[0].banned_until + 'T00:00:00').toLocaleDateString('tr-TR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-      setError(`Bu numara ${until} tarihine kadar randevu alamaz.`)
-      return
-    }
-
-    onSubmit(trimmedName, phone)
+    onSubmit(trimmedName)
   }
 
   return (
@@ -154,7 +118,7 @@ export function CustomerFormStep({ initialName, initialPhone, onSubmit, onBack }
         </h1>
       </div>
 
-      <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="customerName" className="block text-gray-700 text-sm font-medium">
             Ad Soyad <span className="text-gray-400">*</span>
@@ -172,20 +136,17 @@ export function CustomerFormStep({ initialName, initialPhone, onSubmit, onBack }
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="customerPhone" className="block text-gray-700 text-sm font-medium">
-            Telefon <span className="text-gray-400">*</span>
-          </label>
-          <input
-            id="customerPhone"
-            type="tel"
-            inputMode="numeric"
-            value={phone}
-            onChange={(e) => { handlePhoneChange(e.target.value) }}
-            required
-            autoComplete="tel"
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-300 focus:outline-none focus:border-gray-400 transition-colors text-base"
-            placeholder="0532 123 45 67"
-          />
+          <p className="block text-gray-700 text-sm font-medium">Telefon</p>
+          <div className="w-full bg-surface-100 border border-gray-200 rounded-xl px-4 py-3.5 flex items-center justify-between gap-3">
+            <span className="text-gray-900 text-base">{formatPhoneInput(phone)}</span>
+            <button
+              type="button"
+              onClick={onChangePhone}
+              className="text-gray-500 text-sm font-medium underline underline-offset-2 cursor-pointer"
+            >
+              Değiştir
+            </button>
+          </div>
         </div>
 
         {/* KVKK consent */}
@@ -224,10 +185,9 @@ export function CustomerFormStep({ initialName, initialPhone, onSubmit, onBack }
 
         <button
           type="submit"
-          disabled={isChecking}
-          className="w-full mt-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 active:scale-[0.98] text-white font-bold py-4 rounded-full transition-all"
+          className="w-full mt-2 bg-gray-900 hover:bg-gray-800 active:scale-[0.98] text-white font-bold py-4 rounded-full transition-all"
         >
-          {isChecking ? 'Kontrol ediliyor…' : 'Devam Et →'}
+          Devam Et →
         </button>
       </form>
 

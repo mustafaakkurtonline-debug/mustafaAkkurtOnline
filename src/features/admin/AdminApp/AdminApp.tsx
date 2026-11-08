@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import type { AdminTab } from '@/types/admin'
 import { DashboardTab } from '@/features/admin/tabs/DashboardTab/DashboardTab'
+import { CustomersTab } from '@/features/admin/tabs/CustomersTab/CustomersTab'
 import { ServicesTab } from '@/features/admin/tabs/ServicesTab/ServicesTab'
 import { SettingsTab } from '@/features/admin/tabs/SettingsTab/SettingsTab'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
@@ -22,6 +23,17 @@ function CalendarIcon() {
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+
+function UsersIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   )
 }
@@ -49,6 +61,7 @@ function SettingsIcon() {
 
 const TABS: { id: AdminTab; label: string; Icon: () => React.ReactElement }[] = [
   { id: 'dashboard', label: 'Takvim',   Icon: CalendarIcon },
+  { id: 'customers', label: 'Müşteriler', Icon: UsersIcon },
   { id: 'services',  label: 'Hizmetler', Icon: ScissorsIcon },
   { id: 'settings',  label: 'Ayarlar',   Icon: SettingsIcon },
 ]
@@ -217,6 +230,7 @@ export function AdminApp() {
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="max-w-2xl mx-auto px-4 py-4">
           {activeTab === 'dashboard' && <DashboardTab />}
+          {activeTab === 'customers' && <CustomersTab />}
           {activeTab === 'services' && <ServicesTab />}
           {activeTab === 'settings' && <SettingsTab />}
         </div>
