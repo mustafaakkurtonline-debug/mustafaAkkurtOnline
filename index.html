@@ -7,6 +7,21 @@
     <meta name="robots" content="noindex, nofollow" />
 
     <script>
+      // Açılış animasyonu oturumda yalnızca bir kez oynar; ikinci açılışta katman gizlenir.
+      // Oynayacaksa animasyon bitene kadar sayfa kaydırılamaz (src/utils/splash.ts açar).
+      // Gövde çizilmeden karar verilsin diye burada, ES5 ile.
+      (function () {
+        var root = document.documentElement;
+        try {
+          if (window.sessionStorage.getItem('splash_seen')) { root.className += ' splash-seen'; return; }
+          window.sessionStorage.setItem('splash_seen', '1');
+        } catch (e) { /* depolama kapalıysa her açılışta oynar */ }
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        root.className += ' overflow-hidden';
+      })();
+    </script>
+
+    <script>
       // Açılış denetimi: uygulama BOOT_TIMEOUT_MS içinde açılmazsa (eski tarayıcının
       // tanımadığı kod, yüklenemeyen dosya vb.) uyarı gösterilir ve durum Sentry'ye
       // bildirilir. Bu durumda uygulamanın kendi Sentry bağlantısı hiç çalışmadığı
@@ -68,6 +83,10 @@
         window.setTimeout(function () {
           var fallback = document.getElementById('boot-fallback');
           if (!fallback) return;
+          // Açılış ekranı en üstte durur; kaldırılmazsa bu uyarıyı örter
+          var splash = document.getElementById('app-splash');
+          if (splash) splash.parentNode.removeChild(splash);
+          document.documentElement.className = document.documentElement.className.replace(' overflow-hidden', '');
           fallback.hidden = false;
           document.getElementById('boot-reload').addEventListener('click', function () { location.reload(); });
           report();
@@ -99,6 +118,63 @@
   </head>
   <body>
 <div id="root"></div>
+
+    <!-- Açılış animasyonu: oturumda bir kez, uygulama kodu inerken oynar (src/utils/splash.ts kaldırır).
+         Yalnızca Tailwind sınıflarıyla çizilir; JS beklemeden, stil dosyası iner inmez görünür.
+         Oturumda daha önce gösterildiyse (splash-seen) veya hareket azaltma açıksa hiç görünmez. -->
+    <div id="app-splash" class="group fixed inset-0 z-[100] overflow-hidden touch-none select-none in-[.splash-seen]:hidden motion-reduce:hidden" aria-hidden="true">
+      <!-- Kapanış: src/utils/splash.ts "is-exiting" ekleyince içerik söner, ekran ortadan
+           ikiye ayrılıp yukarı ve aşağı açılır; ayrılan kenarlarda altın kesik çizgisi parlar. -->
+      <div class="absolute inset-x-0 top-0 bottom-1/2 bg-splash border-b border-transparent transition-[transform,border-color] duration-700 delay-100 ease-[cubic-bezier(0.76,0,0.24,1)] group-[.is-exiting]:[transform:translateY(-100%)] group-[.is-exiting]:border-brand-500/70"></div>
+      <div class="absolute inset-x-0 top-1/2 bottom-0 bg-splash border-t border-transparent transition-[transform,border-color] duration-700 delay-100 ease-[cubic-bezier(0.76,0,0.24,1)] group-[.is-exiting]:[transform:translateY(100%)] group-[.is-exiting]:border-brand-500/70"></div>
+
+      <div class="absolute inset-0 flex flex-col items-center justify-center px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] transition-[opacity,transform] duration-300 ease-out group-[.is-exiting]:opacity-0 group-[.is-exiting]:[transform:scale(0.96)]">
+      <!-- Çerçeve: kenarlardan çizilen ince çizgiler ve kesişimlerdeki parıltılar -->
+      <div class="absolute inset-x-0 top-[16%] h-px bg-white/10 origin-left animate-splash-frame-x"></div>
+      <div class="absolute inset-x-0 bottom-[16%] h-px bg-white/10 origin-right animate-splash-frame-x"></div>
+      <div class="absolute inset-y-0 left-[10%] w-px bg-white/10 origin-top animate-splash-frame-y"></div>
+      <div class="absolute inset-y-0 right-[10%] w-px bg-white/10 origin-bottom animate-splash-frame-y"></div>
+      <span class="absolute top-[16%] left-[10%] -mt-2 -ml-[5px] text-ink-secondary text-xs leading-none animate-splash-spark">✦</span>
+      <span class="absolute top-[16%] right-[10%] -mt-2 -mr-[5px] text-ink-secondary text-xs leading-none animate-splash-spark">✦</span>
+      <span class="absolute bottom-[16%] left-[10%] -mb-2 -ml-[5px] text-ink-secondary text-xs leading-none animate-splash-spark">✦</span>
+      <span class="absolute bottom-[16%] right-[10%] -mb-2 -mr-[5px] text-ink-secondary text-xs leading-none animate-splash-spark">✦</span>
+
+      <!-- Ortadaki kompozisyon: isim, makasın kestiği altın çizgi, alt yazı -->
+      <div class="relative flex flex-col items-center">
+        <p class="font-serif font-normal text-ink-primary text-[2.5rem] leading-none tracking-tight animate-splash-name">Mustafa Akkurt</p>
+        <div class="relative my-5 h-px w-56">
+          <div class="absolute inset-0 bg-brand-500 origin-left animate-splash-cut"></div>
+
+          <!-- Makas: gelir, çizginin sol ucunda iki kez keser, çizgi boyunca kesip geçer.
+               Kesişlerde noktalı halkalar yayılır. Makasın mili (60,60) çizginin sol ucuna oturur. -->
+          <div class="absolute inset-y-0 left-0 flex items-center">
+            <div class="-ml-14 animate-splash-scissors-out">
+              <div class="animate-splash-scissors-in">
+                <svg viewBox="0 0 120 120" class="w-28 h-28 overflow-visible text-ink-primary" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="60" cy="60" r="18" class="text-brand-400 [transform-box:fill-box] origin-center animate-splash-ring-1" stroke-width="1.5" stroke-dasharray="0.5 5"></circle>
+                  <circle cx="60" cy="60" r="18" class="text-brand-400 [transform-box:fill-box] origin-center animate-splash-ring-2" stroke-width="1.5" stroke-dasharray="0.5 5"></circle>
+                  <!-- Üst sap + alt ağız -->
+                  <g class="[transform-box:view-box] origin-[60px_60px] animate-splash-snip-a">
+                    <circle cx="24" cy="40" r="11"></circle>
+                    <path d="M33.5 45 L60 60 L114 61.5 L62 64"></path>
+                  </g>
+                  <!-- Alt sap + üst ağız -->
+                  <g class="[transform-box:view-box] origin-[60px_60px] animate-splash-snip-b">
+                    <circle cx="24" cy="80" r="11"></circle>
+                    <path d="M33.5 75 L60 60 L114 58.5 L62 56"></path>
+                  </g>
+                  <circle cx="60" cy="60" r="2.5" class="text-brand-400" fill="currentColor" stroke="none"></circle>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-ink-secondary text-sm font-light tracking-wide animate-splash-sub">Berber</p>
+      </div>
+
+      <p class="absolute left-[10%] bottom-[16%] mb-4 font-mono text-[10px] text-ink-muted animate-splash-label">Randevu ekranı hazırlanıyor</p>
+      </div>
+    </div>
 
     <!-- Uygulama açılamazsa beyaz ekran yerine gösterilir (bkz. açılış denetimi) -->
     <div id="boot-fallback" hidden class="min-h-screen bg-surface-50 flex flex-col items-center justify-center px-6 text-center">

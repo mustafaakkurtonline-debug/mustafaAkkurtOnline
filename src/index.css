@@ -10,9 +10,86 @@
   to   { opacity: 1; transform: translateY(0) }
 }
 
+/* ── Açılış animasyonu (index.html #app-splash), toplam ~3.1 sn ──────────────
+   0.0  çerçeve çizgileri kenarlardan çizilir, kesişimlerde ✦ belirir
+   0.2  makas soldan bulanık gelip netleşir
+   0.9  çizginin sol ucunda iki kez keser; her kesişte noktalı halka yayılır
+   1.8  çizgi boyunca kesip geçer, arkasında altın çizgi açılır
+   2.2  isim bulanıktan netleşerek çizginin üstüne, "Berber" altına oturur
+   Hepsi sonlu olmalı: src/utils/splash.ts animasyonların bitişini bekler. */
+@keyframes splash-line-x {
+  from { transform: scaleX(0) }
+  to   { transform: scaleX(1) }
+}
+
+@keyframes splash-line-y {
+  from { transform: scaleY(0) }
+  to   { transform: scaleY(1) }
+}
+
+@keyframes splash-spark {
+  from { opacity: 0; transform: scale(0.4) rotate(-45deg) }
+  to   { opacity: 1; transform: scale(1) rotate(0) }
+}
+
+@keyframes splash-scissors-in {
+  from { opacity: 0; transform: translateX(-45vw) rotate(-25deg); filter: blur(8px) }
+  to   { opacity: 1; transform: translateX(0) rotate(0); filter: blur(0) }
+}
+
+/* Makas çizgi boyunca kesip geçer (çizgi genişliği w-56 = 14rem), sonunda kaybolur */
+@keyframes splash-scissors-out {
+  0%   { opacity: 1; transform: translateX(0) }
+  75%  { opacity: 1 }
+  100% { opacity: 0; transform: translateX(14rem) }
+}
+
+/* İki kesiş: aç–kapa, aç–kapa (kapanışlar %40 ve %80'de) */
+@keyframes splash-snip-a {
+  0%, 40%, 80%, 100% { transform: rotate(0) }
+  20%, 60%           { transform: rotate(16deg) }
+}
+
+@keyframes splash-snip-b {
+  0%, 40%, 80%, 100% { transform: rotate(0) }
+  20%, 60%           { transform: rotate(-16deg) }
+}
+
+@keyframes splash-ring {
+  from { opacity: 0.7; transform: scale(0.3) }
+  to   { opacity: 0; transform: scale(3.2) }
+}
+
+@keyframes splash-focus {
+  from { opacity: 0; transform: translateY(14px); filter: blur(10px) }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0) }
+}
+
+@keyframes splash-focus-down {
+  from { opacity: 0; transform: translateY(-10px); filter: blur(6px) }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0) }
+}
+
 @theme {
   --animate-fade-in: fade-in 0.18s ease-out both;
   --animate-slide-up: slide-up 0.22s ease-out both;
+
+  --animate-splash-frame-x: splash-line-x 0.8s cubic-bezier(0.65, 0, 0.35, 1) both;
+  --animate-splash-frame-y: splash-line-y 0.8s cubic-bezier(0.65, 0, 0.35, 1) 0.1s both;
+  --animate-splash-spark: splash-spark 0.4s ease-out 0.7s both;
+  --animate-splash-scissors-in: splash-scissors-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+  --animate-splash-scissors-out: splash-scissors-out 0.6s cubic-bezier(0.65, 0, 0.35, 1) 1.8s both;
+  --animate-splash-snip-a: splash-snip-a 0.8s ease-in-out 0.9s both;
+  --animate-splash-snip-b: splash-snip-b 0.8s ease-in-out 0.9s both;
+  --animate-splash-ring-1: splash-ring 0.9s ease-out 1.22s both;
+  --animate-splash-ring-2: splash-ring 0.9s ease-out 1.54s both;
+  --animate-splash-cut: splash-line-x 0.6s cubic-bezier(0.65, 0, 0.35, 1) 1.8s both;
+  --animate-splash-name: splash-focus 0.8s cubic-bezier(0.22, 1, 0.36, 1) 2.2s both;
+  --animate-splash-sub: splash-focus-down 0.7s cubic-bezier(0.22, 1, 0.36, 1) 2.45s both;
+  --animate-splash-label: fade-in 0.6s ease-out 0.4s both;
+
+  /* Açılış ekranı zemini */
+  --color-splash: #0a0a0a;
 
   /* ── Gold accent scale (centered on #CA8A04) ── */
   --color-brand-50:  #FFFBEB;

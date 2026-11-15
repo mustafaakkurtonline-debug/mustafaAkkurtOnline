@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { CrashScreen } from './components/layout/CrashScreen/CrashScreen'
+import { hideSplash } from './utils/splash'
 
 initSentry()
 
@@ -38,3 +39,6 @@ createRoot(rootElement, {
 
 // Uygulama açıldı: index.html'deki açılış denetiminin uyarısına gerek kalmadı
 document.getElementById('boot-fallback')?.remove()
+
+// Açılış ekranı solar (hata ekranı açılsa da kaldırılır; yoksa onu örterdi)
+hideSplash()
