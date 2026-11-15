@@ -44,14 +44,14 @@ describe('WelcomeStep', () => {
 
   it('müşteriyi adıyla karşılar', () => {
     render('Ahmet')
-    expect(container.textContent).toContain('Hoş geldiniz,')
+    expect(container.textContent).toContain('Hoş geldin,')
     expect(container.querySelector('h2')?.textContent).toBe('Ahmet')
   })
 
-  it('ad yoksa yalnızca "Hoş geldiniz" yazar', () => {
+  it('ad yoksa yalnızca "Hoş geldin" yazar', () => {
     render('')
-    expect(container.textContent).toContain('Hoş geldiniz')
-    expect(container.textContent).not.toContain('Hoş geldiniz,')
+    expect(container.textContent).toContain('Hoş geldin')
+    expect(container.textContent).not.toContain('Hoş geldin,')
     expect(container.querySelector('h2')).toBeNull()
   })
 

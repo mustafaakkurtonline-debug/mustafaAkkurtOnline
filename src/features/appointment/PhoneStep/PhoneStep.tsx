@@ -17,7 +17,7 @@ interface FirstNameLookup {
 }
 
 // İsim fonksiyonu (migration 016) veritabanına henüz eklenmemişse eski
-// evet/hayır kontrolüne (015) düşülür; müşteri adsız "Hoş geldiniz" görür.
+// evet/hayır kontrolüne (015) düşülür; müşteri adsız "Hoş geldin" görür.
 async function lookupFirstName(digits: string): Promise<FirstNameLookup> {
   const named = await supabase.rpc('approved_customer_first_name', { p_phone: digits })
   if (named.error?.code !== FUNCTION_NOT_FOUND_CODE) return { data: named.data, error: named.error }

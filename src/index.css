@@ -15,7 +15,7 @@
    0.2  makas soldan bulanık gelip netleşir
    0.9  çizginin sol ucunda iki kez keser; her kesişte noktalı halka yayılır
    1.8  çizgi boyunca kesip geçer, arkasında altın çizgi açılır
-   2.2  isim bulanıktan netleşerek çizginin üstüne, "Berber" altına oturur
+   2.2  isim bulanıktan netleşerek çizginin üstüne, "Online Randevu" altına oturur
    Hepsi sonlu olmalı: src/utils/splash.ts animasyonların bitişini bekler. */
 @keyframes splash-line-x {
   from { transform: scaleX(0) }
@@ -55,9 +55,22 @@
   20%, 60%           { transform: rotate(-16deg) }
 }
 
+/* Başlamadan önce görünmez (gecikme süresince minik halka belirmesin) */
+/* Karşılama makası: açık gelir, bir kez keser (%50), yine açık kalır (makas olduğu anlaşılsın) */
+@keyframes welcome-snip-a {
+  0%, 100% { transform: rotate(14deg) }
+  50%      { transform: rotate(0) }
+}
+
+@keyframes welcome-snip-b {
+  0%, 100% { transform: rotate(-14deg) }
+  50%      { transform: rotate(0) }
+}
+
 @keyframes splash-ring {
-  from { opacity: 0.7; transform: scale(0.3) }
-  to   { opacity: 0; transform: scale(3.2) }
+  0%   { opacity: 0; transform: scale(0.3) }
+  10%  { opacity: 0.7 }
+  100% { opacity: 0; transform: scale(3.2) }
 }
 
 @keyframes splash-focus {
@@ -87,6 +100,12 @@
   --animate-splash-name: splash-focus 0.8s cubic-bezier(0.22, 1, 0.36, 1) 2.2s both;
   --animate-splash-sub: splash-focus-down 0.7s cubic-bezier(0.22, 1, 0.36, 1) 2.45s both;
   --animate-splash-label: fade-in 0.6s ease-out 0.4s both;
+
+  /* Karşılama ekranı (WelcomeStep): makas bir kez keser, ismin altında kesik çizgisi açılır */
+  --animate-welcome-snip-a: welcome-snip-a 0.6s ease-in-out 0.3s both;
+  --animate-welcome-snip-b: welcome-snip-b 0.6s ease-in-out 0.3s both;
+  --animate-welcome-ring: splash-ring 0.9s ease-out 0.6s both;
+  --animate-welcome-line: splash-line-x 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.6s both;
 
   /* Açılış ekranı zemini */
   --color-splash: #0a0a0a;

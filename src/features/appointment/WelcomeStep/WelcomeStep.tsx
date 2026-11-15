@@ -1,4 +1,5 @@
 import { BrandHeader } from '@/components/layout/BrandHeader/BrandHeader'
+import { ScissorsMark } from '@/components/ui/ScissorsMark/ScissorsMark'
 import { formatPhoneInput } from '@/utils/dateUtils'
 
 interface WelcomeStepProps {
@@ -15,14 +16,15 @@ export function WelcomeStep({ firstName, phone, onContinue, onChangePhone }: Wel
     <div className="pt-10 pb-4">
       <BrandHeader />
 
-      <div className="bg-white border border-gray-100 rounded-2xl px-5 py-8 shadow-sm text-center">
-        <p className="text-4xl mb-4" aria-hidden="true">👋</p>
-        <p className="text-gray-500 text-base">Hoş geldiniz{firstName ? ',' : ''}</p>
+      <div className="bg-white border border-gray-100 rounded-2xl px-5 py-7 shadow-sm text-center">
+        <ScissorsMark />
+        <p className="text-gray-500 text-base mt-5">Hoş geldin{firstName ? ',' : ''}</p>
         {firstName && (
           <h2 className="font-serif text-gray-900 text-3xl font-bold mt-1 break-words">{firstName}</h2>
         )}
+        <div className="mx-auto mt-4 h-px w-16 bg-brand-500 origin-left animate-welcome-line motion-reduce:animate-none" />
         <p className="text-gray-500 text-sm mt-4">
-          Randevunuzu birkaç adımda oluşturabilirsiniz.
+          Randevunu birkaç adımda alabilirsin.
         </p>
 
         <button
@@ -39,7 +41,7 @@ export function WelcomeStep({ firstName, phone, onContinue, onChangePhone }: Wel
         onClick={onChangePhone}
         className="mt-5 w-full text-gray-500 text-sm py-2 cursor-pointer"
       >
-        Siz değil misiniz?{' '}
+        Sen değil misin?{' '}
         <span className="text-gray-900 font-medium underline">Numarayı değiştir</span>
       </button>
       <p className="text-gray-400 text-xs text-center">{formatPhoneInput(phone)}</p>
