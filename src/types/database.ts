@@ -353,6 +353,11 @@ export interface Database {
         Args: { p_phone: string }
         Returns: boolean
       }
+      // Kayıtlı değilse null (migration 016)
+      approved_customer_first_name: {
+        Args: { p_phone: string }
+        Returns: string | null
+      }
     }
     Enums: {
       appointment_status: AppointmentStatus

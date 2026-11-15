@@ -4,16 +4,37 @@ import { supabase } from '@/lib/supabase'
 import { BrandHeader } from '@/components/layout/BrandHeader/BrandHeader'
 import { normalizePhone, formatPhoneInput, isValidTurkishPhone, getTodayString } from '@/utils/dateUtils'
 import { buildWhatsAppUrl } from '@/utils/whatsapp'
+import { formatFirstName } from '@/utils/formatName'
 import { SHOP_PHONE } from '@/constants/shop'
+
+// PostgREST: çağrılan veritabanı fonksiyonu yok
+const FUNCTION_NOT_FOUND_CODE = 'PGRST202'
+
+interface FirstNameLookup {
+  // null = kayıtlı değil; boş metin = kayıtlı ama adı bilinmiyor
+  data: string | null
+  error: { message: string } | null
+}
+
+// İsim fonksiyonu (migration 016) veritabanına henüz eklenmemişse eski
+// evet/hayır kontrolüne (015) düşülür; müşteri adsız "Hoş geldiniz" görür.
+async function lookupFirstName(digits: string): Promise<FirstNameLookup> {
+  const named = await supabase.rpc('approved_customer_first_name', { p_phone: digits })
+  if (named.error?.code !== FUNCTION_NOT_FOUND_CODE) return { data: named.data, error: named.error }
+
+  const approved = await supabase.rpc('is_approved_customer', { p_phone: digits })
+  if (approved.error) return { data: null, error: approved.error }
+  return { data: approved.data ? '' : null, error: null }
+}
 
 interface PhoneStepProps {
   initialPhone: string
-  onVerified: (phone: string) => void
+  onVerified: (phone: string, firstName: string) => void
 }
 
 // Online randevu yalnızca berberin müşteri listesindeki numaralara açıktır
-// (supabase/migrations/015). Liste dışarı verilmez; yalnızca numaranın kayıtlı
-// olup olmadığı sorulur. Aynı kural veritabanında da uygulanır.
+// (supabase/migrations/015). Liste dışarı verilmez; numara kayıtlıysa yalnızca
+// karşılama için ilk ad döner (016). Aynı kural veritabanında da uygulanır.
 export function PhoneStep({ initialPhone, onVerified }: PhoneStepProps) {
   const [phone, setPhone] = useState<string>(initialPhone ? formatPhoneInput(initialPhone) : '')
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +54,7 @@ export function PhoneStep({ initialPhone, onVerified }: PhoneStepProps) {
     setIsChecking(true)
 
     const [approval, ban] = await Promise.all([
-      supabase.rpc('is_approved_customer', { p_phone: digits }),
+      lookupFirstName(digits),
       supabase
         .from('banned_customers')
         .select('banned_until')
@@ -49,7 +70,8 @@ export function PhoneStep({ initialPhone, onVerified }: PhoneStepProps) {
       return
     }
 
-    if (!approval.data) {
+    // null = kayıtlı değil; boş metin = kayıtlı ama adı yazılmamış
+    if (approval.data === null) {
       setIsNotRegistered(true)
       return
     }
@@ -65,7 +87,7 @@ export function PhoneStep({ initialPhone, onVerified }: PhoneStepProps) {
       return
     }
 
-    onVerified(phone)
+    onVerified(phone, formatFirstName(approval.data))
   }
 
   if (isNotRegistered) {

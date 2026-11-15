@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { ReactElement } from 'react'
 import { PhoneStep } from '@/features/appointment/PhoneStep/PhoneStep'
+import { WelcomeStep } from '@/features/appointment/WelcomeStep/WelcomeStep'
 import { ServiceStep } from '@/features/appointment/ServiceStep/ServiceStep'
 import { DateTimeStep } from '@/features/appointment/DateTimeStep/DateTimeStep'
 import { CustomerFormStep } from '@/features/appointment/CustomerFormStep/CustomerFormStep'
@@ -19,6 +20,8 @@ interface WizardState {
   time: string | null
   customerName: string
   customerPhone: string
+  // Karşılama ekranı için; müşteri listesindeki adın ilk kelimesi
+  customerFirstName: string
   appointmentId: string | null
 }
 
@@ -29,6 +32,7 @@ const INITIAL_STATE: WizardState = {
   time: null,
   customerName: '',
   customerPhone: '',
+  customerFirstName: '',
   appointmentId: null,
 }
 
@@ -97,9 +101,9 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     onBookingFlowChange?.(active)
   }, [wizard.step, onBookingFlowChange])
 
-  const handlePhoneVerified = (customerPhone: string): void => {
+  const handlePhoneVerified = (customerPhone: string, customerFirstName: string): void => {
     savePhone(customerPhone)
-    setWizard(prev => ({ ...prev, customerPhone, step: 'service' }))
+    setWizard(prev => ({ ...prev, customerPhone, customerFirstName, step: 'welcome' }))
   }
 
   const handleChangePhone = (): void => {
@@ -185,7 +189,13 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
 
   // Numara az önce doğrulandığı için yeni randevu doğrudan hizmet seçimiyle başlar
   const handleNewAppointment = (): void => {
-    setWizard(prev => ({ ...INITIAL_STATE, step: 'service', customerPhone: prev.customerPhone, customerName: prev.customerName }))
+    setWizard(prev => ({
+      ...INITIAL_STATE,
+      step: 'service',
+      customerPhone: prev.customerPhone,
+      customerFirstName: prev.customerFirstName,
+      customerName: prev.customerName,
+    }))
     setSubmitError(null)
   }
 
@@ -193,6 +203,16 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
     switch (wizard.step) {
       case 'phone':
         return <PhoneStep initialPhone={wizard.customerPhone} onVerified={handlePhoneVerified} />
+
+      case 'welcome':
+        return (
+          <WelcomeStep
+            firstName={wizard.customerFirstName}
+            phone={wizard.customerPhone}
+            onContinue={() => { setWizard(prev => ({ ...prev, step: 'service' })) }}
+            onChangePhone={handleChangePhone}
+          />
+        )
 
       case 'service':
         return <ServiceStep onSelect={handleServiceSelect} />

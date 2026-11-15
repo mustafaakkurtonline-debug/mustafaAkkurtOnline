@@ -2,7 +2,7 @@ import type { Database } from './database'
 
 export type Service = Database['public']['Tables']['services']['Row']
 
-export type WizardStep = 'phone' | 'service' | 'datetime' | 'form' | 'confirmation' | 'success'
+export type WizardStep = 'phone' | 'welcome' | 'service' | 'datetime' | 'form' | 'confirmation' | 'success'
 
 export interface AppointmentFormData {
   service: Service

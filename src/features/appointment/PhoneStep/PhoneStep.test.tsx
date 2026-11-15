@@ -3,9 +3,9 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 
-interface QueryResult<T> { data: T; error: { message: string } | null }
+interface QueryResult<T> { data: T; error: { message: string; code?: string } | null }
 
-const rpc = vi.fn<(name: string, args: { p_phone: string }) => Promise<QueryResult<boolean | null>>>()
+const rpc = vi.fn<(name: string, args: { p_phone: string }) => Promise<QueryResult<string | boolean | null>>>()
 const bannedResult = vi.fn<() => Promise<QueryResult<{ banned_until: string }[]>>>()
 
 vi.mock('@/lib/supabase', () => {
@@ -60,10 +60,10 @@ async function submitPhone(phone: string): Promise<void> {
 }
 
 describe('PhoneStep', () => {
-  const onVerified = vi.fn<(phone: string) => void>()
+  const onVerified = vi.fn<(phone: string, firstName: string) => void>()
 
   beforeEach(() => {
-    rpc.mockResolvedValue({ data: true, error: null })
+    rpc.mockResolvedValue({ data: 'AHMET', error: null })
     bannedResult.mockResolvedValue({ data: [], error: null })
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -77,14 +77,20 @@ describe('PhoneStep', () => {
     vi.clearAllMocks()
   })
 
-  it('kayıtlı müşteri randevuya devam eder', async () => {
+  it('kayıtlı müşteri ilk adıyla devam eder', async () => {
     await submitPhone(VALID_PHONE)
-    expect(rpc).toHaveBeenCalledWith('is_approved_customer', { p_phone: '05321234567' })
-    expect(onVerified).toHaveBeenCalledWith(VALID_PHONE)
+    expect(rpc).toHaveBeenCalledWith('approved_customer_first_name', { p_phone: '05321234567' })
+    expect(onVerified).toHaveBeenCalledWith(VALID_PHONE, 'Ahmet')
+  })
+
+  it('adı yazılmamış kayıtlı müşteri de devam eder', async () => {
+    rpc.mockResolvedValue({ data: '', error: null })
+    await submitPhone(VALID_PHONE)
+    expect(onVerified).toHaveBeenCalledWith(VALID_PHONE, '')
   })
 
   it('kayıtlı olmayan numara devam edemez ve WhatsApp ile başvurabilir', async () => {
-    rpc.mockResolvedValue({ data: false, error: null })
+    rpc.mockResolvedValue({ data: null, error: null })
     await submitPhone(VALID_PHONE)
 
     expect(container.textContent).toContain('Kayıtlı müşteri bulunamadı')
@@ -111,6 +117,24 @@ describe('PhoneStep', () => {
 
     expect(container.textContent).toContain('Numara kontrol edilemedi')
     expect(container.textContent).not.toContain('Kayıtlı müşteri bulunamadı')
+    expect(onVerified).not.toHaveBeenCalled()
+  })
+
+  it('isim fonksiyonu veritabanında yoksa eski kontrole düşer', async () => {
+    rpc.mockImplementation(name => Promise.resolve(name === 'approved_customer_first_name'
+      ? { data: null, error: { message: 'not found', code: 'PGRST202' } }
+      : { data: true, error: null }))
+    await submitPhone(VALID_PHONE)
+    expect(rpc).toHaveBeenCalledWith('is_approved_customer', { p_phone: '05321234567' })
+    expect(onVerified).toHaveBeenCalledWith(VALID_PHONE, '')
+  })
+
+  it('eski kontrolde kayıtsız numara yine engellenir', async () => {
+    rpc.mockImplementation(name => Promise.resolve(name === 'approved_customer_first_name'
+      ? { data: null, error: { message: 'not found', code: 'PGRST202' } }
+      : { data: false, error: null }))
+    await submitPhone(VALID_PHONE)
+    expect(container.textContent).toContain('Kayıtlı müşteri bulunamadı')
     expect(onVerified).not.toHaveBeenCalled()
   })
 
