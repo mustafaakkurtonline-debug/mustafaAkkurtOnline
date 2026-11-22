@@ -21,6 +21,7 @@ export function useServices(): UseServicesReturn {
         .from('services')
         .select('*')
         .eq('is_active', true)
+        .is('deleted_at', null)
         .order('price', { ascending: true })
 
       if (cancelled) return

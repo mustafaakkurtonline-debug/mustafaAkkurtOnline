@@ -25,6 +25,7 @@ export function useAdminServices(): UseAdminServicesReturn {
       const { data } = await supabase
         .from('services')
         .select('*')
+        .is('deleted_at', null)
         .order('name', { ascending: true })
 
       if (cancelled) return

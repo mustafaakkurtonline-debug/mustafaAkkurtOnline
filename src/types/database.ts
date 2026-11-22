@@ -18,6 +18,7 @@ export interface Database {
           duration_minutes: number
           price: number
           is_active: boolean
+          deleted_at: string | null
           created_at: string
         }
         Insert: {
@@ -26,6 +27,7 @@ export interface Database {
           duration_minutes: number
           price: number
           is_active?: boolean
+          deleted_at?: string | null
           created_at?: string
         }
         Update: {
@@ -34,6 +36,7 @@ export interface Database {
           duration_minutes?: number
           price?: number
           is_active?: boolean
+          deleted_at?: string | null
           created_at?: string
         }
         Relationships: []

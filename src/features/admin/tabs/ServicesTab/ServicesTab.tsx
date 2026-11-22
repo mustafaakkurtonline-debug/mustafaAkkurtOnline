@@ -5,6 +5,8 @@ import { ServiceForm } from '@/features/admin/components/ServiceForm/ServiceForm
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch/ToggleSwitch'
 import type { Service } from '@/types/admin'
 
+const FOREIGN_KEY_VIOLATION_CODE = '23503'
+
 function EditIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -30,14 +32,37 @@ export function ServicesTab() {
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [showAddForm, setShowAddForm] = useState<boolean>(false)
 
+  const [actionError, setActionError] = useState<string | null>(null)
+
   const handleToggleActive = async (service: Service): Promise<void> => {
-    await supabase.from('services').update({ is_active: !service.is_active }).eq('id', service.id)
+    setActionError(null)
+    const { error } = await supabase
+      .from('services')
+      .update({ is_active: !service.is_active })
+      .eq('id', service.id)
+    if (error) setActionError('Hizmet durumu güncellenemedi. Lütfen tekrar deneyin.')
     refetch()
+  }
+
+  // Randevu geçmişi olan hizmet veritabanından silinemez (FK RESTRICT);
+  // bu durumda arşivlenir: listeden kalkar, eski randevularda adı korunur.
+  const archiveService = async (serviceId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('services')
+      .update({ is_active: false, deleted_at: new Date().toISOString() })
+      .eq('id', serviceId)
+    return error === null
   }
 
   const handleDelete = async (service: Service): Promise<void> => {
     if (!window.confirm(`"${service.name}" hizmetini silmek istediğinize emin misiniz?`)) return
-    await supabase.from('services').delete().eq('id', service.id)
+    setActionError(null)
+
+    const { error } = await supabase.from('services').delete().eq('id', service.id)
+    const isDeleted = error === null
+      || (error.code === FOREIGN_KEY_VIOLATION_CODE && await archiveService(service.id))
+
+    if (!isDeleted) setActionError('Hizmet silinemedi. Lütfen tekrar deneyin.')
     refetch()
   }
 
@@ -64,6 +89,12 @@ export function ServicesTab() {
           + Ekle
         </button>
       </div>
+
+      {actionError && (
+        <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-50 border border-red-100">
+          <p className="text-red-700 text-sm">{actionError}</p>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex justify-center py-12">
