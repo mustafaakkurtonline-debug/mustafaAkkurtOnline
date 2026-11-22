@@ -4,3 +4,8 @@ project_id = "mustafa-akkurt-online"
 # WEBHOOK_SECRET kontrolüyle yapılır (gateway JWT'si kapalı).
 [functions.send-push-notification]
 verify_jwt = false
+
+# WhatsApp otomatik mesajları: cron-job.org her gün 21:00 çağırır;
+# kimlik doğrulama fonksiyon içindeki CRON_SECRET kontrolüyle yapılır.
+[functions.whatsapp-reminders]
+verify_jwt = false

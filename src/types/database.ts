@@ -48,6 +48,8 @@ export interface Database {
           appointment_time: string
           status: AppointmentStatus
           no_show_notified: boolean
+          whatsapp_reminder_sent_at: string | null
+          whatsapp_revisit_sent_at: string | null
           created_at: string
         }
         Insert: {
@@ -59,6 +61,8 @@ export interface Database {
           appointment_time: string
           status?: AppointmentStatus
           no_show_notified?: boolean
+          whatsapp_reminder_sent_at?: string | null
+          whatsapp_revisit_sent_at?: string | null
           created_at?: string
         }
         Update: {
@@ -70,6 +74,8 @@ export interface Database {
           appointment_time?: string
           status?: AppointmentStatus
           no_show_notified?: boolean
+          whatsapp_reminder_sent_at?: string | null
+          whatsapp_revisit_sent_at?: string | null
           created_at?: string
         }
         Relationships: [
@@ -167,6 +173,40 @@ export interface Database {
           id?: string
           customer_name?: string
           customer_phone?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      // Otomatik WhatsApp gönderim kaydı (migration 017); yalnızca Edge Function yazar
+      whatsapp_messages: {
+        Row: {
+          id: string
+          appointment_id: string | null
+          kind: 'reminder' | 'revisit'
+          customer_phone: string
+          status: 'sent' | 'failed'
+          error: string | null
+          meta_message_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id?: string | null
+          kind: 'reminder' | 'revisit'
+          customer_phone: string
+          status: 'sent' | 'failed'
+          error?: string | null
+          meta_message_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string | null
+          kind?: 'reminder' | 'revisit'
+          customer_phone?: string
+          status?: 'sent' | 'failed'
+          error?: string | null
+          meta_message_id?: string | null
           created_at?: string
         }
         Relationships: []
