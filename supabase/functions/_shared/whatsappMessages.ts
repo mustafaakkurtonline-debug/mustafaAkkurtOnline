@@ -56,6 +56,12 @@ export function toE164(rawPhone: string): string {
   return TURKEY_COUNTRY_CODE + digits
 }
 
+// "+90 532 123 45 67" / "5321234567" → "05321234567" (sitenin ve veritabanının
+// numara biçimi; bildirim abonelikleri bu biçimle aranır)
+export function toLocalPhone(rawPhone: string): string {
+  return '0' + toE164(rawPhone).slice(TURKEY_COUNTRY_CODE.length)
+}
+
 // "  işıl  YILMAZ" → "İşıl" (src/utils/formatName.ts ile aynı kural;
 // Edge Function src/ klasörünü içe aktaramadığı için burada da var)
 export function firstName(fullName: string): string {

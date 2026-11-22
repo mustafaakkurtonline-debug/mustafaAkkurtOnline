@@ -1,5 +1,6 @@
 import { BrandHeader } from '@/components/layout/BrandHeader/BrandHeader'
 import { ScissorsMark } from '@/components/ui/ScissorsMark/ScissorsMark'
+import { NotificationOptIn } from '@/features/appointment/NotificationOptIn/NotificationOptIn'
 import { formatPhoneInput } from '@/utils/dateUtils'
 
 interface WelcomeStepProps {
@@ -34,6 +35,9 @@ export function WelcomeStep({ firstName, phone, onContinue, onChangePhone }: Wel
         >
           Randevu Al →
         </button>
+
+        {/* Randevu almadan dönen (ör. uygulamayı ana ekrana yeni ekleyen) müşteri de abone olabilsin */}
+        <NotificationOptIn phone={phone} variant="inline" />
       </div>
 
       <button

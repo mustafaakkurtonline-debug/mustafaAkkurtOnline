@@ -9,7 +9,6 @@ import { ConfirmationStep } from '@/features/appointment/ConfirmationStep/Confir
 import { SuccessStep } from '@/features/appointment/SuccessStep/SuccessStep'
 import { supabase } from '@/lib/supabase'
 import { formatDateLong, formatTime, formatDuration, normalizePhone } from '@/utils/dateUtils'
-import { showSystemNotification } from '@/utils/serviceWorker'
 import { readSavedPhone, savePhone } from '@/utils/savedPhone'
 import type { Service, WizardStep, AppointmentFormData } from '@/types/appointment'
 
@@ -165,26 +164,9 @@ export function AppointmentPage({ onBookingFlowChange }: AppointmentPageProps = 
       return
     }
 
+    // Bildirim izni burada değil, başarı ekranındaki düğmeyle istenir (SuccessStep):
+    // iPhone izni yalnızca dokunmaya yanıt olarak sorar.
     setWizard(prev => ({ ...prev, step: 'success', appointmentId }))
-
-    // Browser push notification
-    if ('Notification' in window && Notification.permission !== 'denied') {
-      const body = `${service.name} · ${formatDateLong(date)} ${formatTime(time)}`
-      const show = (): void => {
-        // Randevu zaten kaydedildi; bildirim gösterilemezse müşteriye hata yansıtılmaz
-        showSystemNotification('Randevunuz Alındı! ✓', {
-          body,
-          icon: '/icons/icon-192x192.png',
-        }).catch(() => {})
-      }
-      if (Notification.permission === 'granted') {
-        show()
-      } else {
-        void Notification.requestPermission().then(perm => {
-          if (perm === 'granted') show()
-        })
-      }
-    }
   }
 
   // Numara az önce doğrulandığı için yeni randevu doğrudan hizmet seçimiyle başlar

@@ -16,6 +16,12 @@ interface GraphResponse {
   error?: { message?: string; code?: number }
 }
 
+// Meta hesabı bağlanmadan da günlük iş çalışır (bildirim daveti gider);
+// bağlı değilken WhatsApp adımları atlanır, her randevu için hata yazılmaz.
+export function isWhatsAppConfigured(): boolean {
+  return Boolean(Deno.env.get('WHATSAPP_TOKEN') && Deno.env.get('WHATSAPP_PHONE_NUMBER_ID'))
+}
+
 // Meta WhatsApp Cloud API ile onaylı şablon mesajı gönderir. Hata fırlatmaz,
 // sonucu döndürür (bir müşteriye gidemeyen mesaj diğerlerini durdurmasın).
 export async function sendTemplate(rawPhone: string, template: TemplateName, params: string[]): Promise<SendResult> {
@@ -44,19 +50,26 @@ export async function sendTemplate(rawPhone: string, template: TemplateName, par
 }
 
 export type MessageKind = 'reminder' | 'revisit'
+// whatsapp: ücretli şablon mesajı, push: ücretsiz bildirim (migration 019)
+export type MessageChannel = 'whatsapp' | 'push'
 
 interface LogEntry {
   appointmentId: string | null
   kind: MessageKind
+  channel?: MessageChannel
   customerPhone: string
   result: SendResult
 }
 
 // Her gönderim denemesi admin'in görebileceği kayda yazılır (migration 017)
-export async function logMessage(supabase: SupabaseClient, { appointmentId, kind, customerPhone, result }: LogEntry): Promise<void> {
+export async function logMessage(
+  supabase: SupabaseClient,
+  { appointmentId, kind, channel = 'whatsapp', customerPhone, result }: LogEntry,
+): Promise<void> {
   await supabase.from('whatsapp_messages').insert({
     appointment_id: appointmentId,
     kind,
+    channel,
     customer_phone: customerPhone,
     status: result.ok ? 'sent' : 'failed',
     error: result.error,

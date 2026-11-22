@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   toE164,
+  toLocalPhone,
   firstName,
   formatDateTr,
   formatTimeTr,
@@ -41,6 +42,12 @@ describe('biçimlendirme', () => {
     expect(toE164('0532 123 45 67')).toBe('905321234567')
     expect(toE164('+90 532 123 45 67')).toBe('905321234567')
     expect(toE164('5321234567')).toBe('905321234567')
+  })
+
+  it('telefonu sitenin yerel biçimine çevirir', () => {
+    expect(toLocalPhone('05321234567')).toBe('05321234567')
+    expect(toLocalPhone('+90 532 123 45 67')).toBe('05321234567')
+    expect(toLocalPhone('5321234567')).toBe('05321234567')
   })
 
   it('tarihi ve saati Türkçe yazar', () => {

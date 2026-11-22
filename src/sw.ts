@@ -63,10 +63,28 @@ registerRoute(
 // Realtime tarafı da aynı tag ile bildirim gösterdiğinden, aynı randevu
 // için ikinci bildirim öncekinin yerine geçer; çift bildirim oluşmaz.
 // ------------------------------------------------------------------
+const ADMIN_URL = '/admin'
+
+// Edge Function'ların gönderdiği içerik. url ve requireInteraction'ı yalnızca
+// müşteri bildirimleri (hatırlatma, bakım daveti) gönderir; yoksa bildirim
+// berberindir ve dokununca admin paneli açılır.
+interface PushPayload {
+  title: string
+  body: string
+  tag?: string
+  url?: string
+  requireInteraction?: boolean
+}
+
+interface NotificationData {
+  url: string
+}
+
 self.addEventListener('push', (event: PushEvent) => {
   if (!event.data) return
 
-  const data = event.data.json() as { title: string; body: string; tag?: string }
+  const data = event.data.json() as PushPayload
+  const notificationData: NotificationData = { url: data.url ?? ADMIN_URL }
 
   event.waitUntil(
     self.registration.showNotification(data.title, {
@@ -74,24 +92,35 @@ self.addEventListener('push', (event: PushEvent) => {
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-192x192.png',
       tag: data.tag ?? 'appointment',
-      requireInteraction: true,
+      requireInteraction: data.requireInteraction ?? true,
+      data: notificationData,
       // vibrate TS tiplerinde yok ama tüm Android tarayıcıları destekler
       ...({ vibrate: [200, 100, 200] } as NotificationOptions),
     }),
   )
 })
 
-// Bildirime tıklanınca admin panelini aç
+function isAdminPath(pathname: string): boolean {
+  return pathname.startsWith(ADMIN_URL)
+}
+
+// Bildirime tıklanınca ilgili sayfayı aç: berberin bildirimi admin panelini,
+// müşterinin bildirimi randevu sayfasını. Uygun bir pencere açıksa o öne gelir.
+// Sayfanın kendi gösterdiği bildirimlerde (Realtime) data yoktur → admin paneli.
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close()
+
+  const data = event.notification.data as Partial<NotificationData> | null
+  const target = new URL(data?.url ?? ADMIN_URL, self.location.origin)
+  const wantsAdmin = isAdminPath(target.pathname)
 
   event.waitUntil(
     self.clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((clients) => {
-        const adminClient = clients.find((c) => c.url.includes('/admin'))
-        if (adminClient) return adminClient.focus()
-        return self.clients.openWindow('/admin')
+        const match = clients.find((c) => isAdminPath(new URL(c.url).pathname) === wantsAdmin)
+        if (match) return match.focus()
+        return self.clients.openWindow(target.href)
       }),
   )
 })

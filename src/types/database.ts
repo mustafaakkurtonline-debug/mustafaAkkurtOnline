@@ -186,6 +186,7 @@ export interface Database {
           id: string
           appointment_id: string | null
           kind: 'reminder' | 'revisit'
+          channel: 'whatsapp' | 'push'
           customer_phone: string
           status: 'sent' | 'failed'
           error: string | null
@@ -196,6 +197,7 @@ export interface Database {
           id?: string
           appointment_id?: string | null
           kind: 'reminder' | 'revisit'
+          channel?: 'whatsapp' | 'push'
           customer_phone: string
           status: 'sent' | 'failed'
           error?: string | null
@@ -206,6 +208,7 @@ export interface Database {
           id?: string
           appointment_id?: string | null
           kind?: 'reminder' | 'revisit'
+          channel?: 'whatsapp' | 'push'
           customer_phone?: string
           status?: 'sent' | 'failed'
           error?: string | null
@@ -369,6 +372,38 @@ export interface Database {
           }
         ]
       }
+      // Müşteri cihazlarının bildirim abonelikleri, numaraya bağlı (migration 019).
+      // Müşteri tarafı tabloya erişemez; save_customer_push_subscription ile yazar.
+      customer_push_subscriptions: {
+        Row: {
+          id: string
+          customer_phone: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          customer_phone: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          customer_phone?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -400,6 +435,11 @@ export interface Database {
       approved_customer_first_name: {
         Args: { p_phone: string }
         Returns: string | null
+      }
+      // Kayıtlı olmayan numarada ya da geçersiz abonelikte false (migration 019)
+      save_customer_push_subscription: {
+        Args: { p_phone: string; p_endpoint: string; p_p256dh: string; p_auth: string }
+        Returns: boolean
       }
     }
     Enums: {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDateLong, formatTime } from '@/utils/dateUtils'
-import { showSystemNotification, waitForServiceWorker } from '@/utils/serviceWorker'
+import { showSystemNotification } from '@/utils/serviceWorker'
+import { getOrCreatePushSubscription, isIosBrowserTab, readVapidPublicKey, toPushKeys } from '@/utils/pushSubscription'
 
 interface AppointmentPayload {
   id: string
@@ -39,46 +40,18 @@ async function showAppointmentNotification(payload: AppointmentPayload): Promise
   })
 }
 
-function vapidKeyToUint8Array(base64url: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64url.length % 4)) % 4)
-  const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64)
-  const buf = new Uint8Array(new ArrayBuffer(raw.length))
-  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i)
-  return buf
-}
-
 async function saveSubscription(sub: PushSubscription): Promise<void> {
-  const json = sub.toJSON()
-  const endpoint = json.endpoint
-  const p256dh = json.keys?.p256dh
-  const auth = json.keys?.auth
-  if (!endpoint || !p256dh || !auth) throw new Error('Abonelik bilgileri eksik')
+  const keys = toPushKeys(sub)
+  if (!keys) throw new Error('Abonelik bilgileri eksik')
 
   const { error } = await supabase
     .from('push_subscriptions')
-    .upsert({ endpoint, p256dh, auth }, { onConflict: 'endpoint' })
+    .upsert(keys, { onConflict: 'endpoint' })
   if (error) throw new Error(`Veritabanına kaydedilemedi: ${error.message}`)
-}
-
-function keysEqual(a: ArrayBuffer | null, b: Uint8Array): boolean {
-  if (a === null) return false
-  const av = new Uint8Array(a)
-  if (av.length !== b.length) return false
-  return av.every((v, i) => v === b[i])
 }
 
 // İzin zaten verilmiş varsayılarak çağrılır — kendi içinde izin istemez.
 // Başarısızlıkta anlamlı bir Error fırlatır; çağıran taraf UI'da gösterir.
-// iOS'ta web push yalnızca ana ekrana eklenmiş (standalone) uygulamada çalışır;
-// Safari sekmesinde PushManager hiç tanımlı olmaz.
-function isIosBrowserTab(): boolean {
-  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  if (!isIos) return false
-  return !window.matchMedia('(display-mode: standalone)').matches
-}
-
 async function registerPushSubscription(): Promise<void> {
   if (!('serviceWorker' in navigator)) throw new Error('Bu tarayıcı service worker desteklemiyor')
   if (!('PushManager' in window)) {
@@ -92,28 +65,10 @@ async function registerPushSubscription(): Promise<void> {
     throw new Error('Bu tarayıcı web push desteklemiyor')
   }
 
-  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
+  const vapidPublicKey = readVapidPublicKey()
   if (!vapidPublicKey) throw new Error('VAPID anahtarı yapılandırılmamış')
 
-  const registration = await waitForServiceWorker()
-
-  const applicationServerKey = vapidKeyToUint8Array(vapidPublicKey)
-  const existing = await registration.pushManager.getSubscription()
-
-  if (existing) {
-    if (keysEqual(existing.options.applicationServerKey, applicationServerKey)) {
-      await saveSubscription(existing)
-      return
-    }
-    // Farklı (eski) VAPID anahtarıyla yapılmış abonelik push alamaz — yenile
-    await existing.unsubscribe()
-  }
-
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
-  })
-  await saveSubscription(subscription)
+  await saveSubscription(await getOrCreatePushSubscription(vapidPublicKey))
 }
 
 // Teknik hataları berberin anlayacağı Türkçe açıklamaya çevirir

@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { NotificationOptIn } from '@/features/appointment/NotificationOptIn/NotificationOptIn'
 import { formatDateLong, formatTime, formatDuration } from '@/utils/dateUtils'
 import type { AppointmentFormData } from '@/types/appointment'
 
@@ -17,59 +16,9 @@ function isInStandaloneMode(): boolean {
   return window.matchMedia('(display-mode: standalone)').matches
 }
 
-function vapidKeyToUint8Array(base64url: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64url.length % 4)) % 4)
-  const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64)
-  const buf = new Uint8Array(new ArrayBuffer(raw.length))
-  for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i)
-  return buf
-}
-
-async function subscribeAndSave(appointmentId: string): Promise<boolean> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
-
-  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
-  if (!vapidPublicKey) return false
-
-  const registration = await navigator.serviceWorker.ready
-  let sub = await registration.pushManager.getSubscription()
-  if (!sub) {
-    sub = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: vapidKeyToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
-    })
-  }
-
-  const json = sub.toJSON()
-  const endpoint = json.endpoint
-  const p256dh = json.keys?.p256dh
-  const auth = json.keys?.auth
-  if (!endpoint || !p256dh || !auth) return false
-
-  const { error } = await supabase
-    .from('appointment_reminders')
-    .insert({ appointment_id: appointmentId, endpoint, p256dh, auth })
-
-  return !error
-}
-
 export function SuccessStep({ formData, appointmentId, onNewAppointment }: SuccessStepProps) {
   const alreadyInstalled = isInStandaloneMode()
   const ios = isIos()
-  const [reminderSet, setReminderSet] = useState(false)
-
-  // İzin zaten verilmişse otomatik abone ol — kullanıcı etkileşimi gerekmez
-  useEffect(() => {
-    if (!appointmentId) return
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
-    if (Notification.permission !== 'granted') return
-
-    // Abonelik kurulamazsa (bildirim servisi yok vb.) hatırlatma kurulmadı olarak kalır
-    subscribeAndSave(appointmentId)
-      .then((ok) => { if (ok) setReminderSet(true) })
-      .catch(() => {})
-  }, [appointmentId])
 
   return (
     <div className="pt-10 pb-4 space-y-6">
@@ -110,14 +59,8 @@ export function SuccessStep({ formData, appointmentId, onNewAppointment }: Succe
         </div>
       </div>
 
-      {reminderSet && (
-        <div className="flex items-center justify-center gap-2 py-2 text-gray-400 text-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          1 saat önce hatırlatma gönderilecek
-        </div>
-      )}
+      {/* Bakım daveti ve randevu hatırlatması bildirimle gelsin */}
+      <NotificationOptIn phone={formData.customerPhone} appointmentId={appointmentId} variant="card" />
 
       {/* PWA install */}
       {!alreadyInstalled && (
