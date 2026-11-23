@@ -44,7 +44,7 @@ function KvkkModal({ onClose }: { onClose: () => void }) {
           <div>
             <p className="text-gray-900 font-semibold mb-1">İşleme Amaçları ve Hukuki Dayanağı</p>
             <p>
-              Kişisel verileriniz; randevu oluşturulması, onaylanması, randevu ve bakım
+              Kişisel verileriniz; randevu oluşturulması, onaylanması ve randevu
               hatırlatmalarının gönderilmesi amacıyla,
               KVKK&apos;nın 5. maddesi uyarınca açık rızanıza dayanılarak işlenmektedir.
             </p>
@@ -52,10 +52,8 @@ function KvkkModal({ onClose }: { onClose: () => void }) {
           <div>
             <p className="text-gray-900 font-semibold mb-1">Aktarım</p>
             <p>
-              Randevu hatırlatma ve bakım hatırlatma mesajları WhatsApp (Meta Platforms)
-              üzerinden gönderilir. Bu kapsamda adınız, telefon numaranız ve randevu bilgileriniz
-              yurt dışındaki sunuculara aktarılabilir. Verileriniz bunun dışında üçüncü kişilerle
-              paylaşılmamaktadır.
+              Bildirim izni verdiyseniz randevu hatırlatmaları uygulama bildirimi olarak
+              gönderilir. Verileriniz üçüncü kişilerle paylaşılmamaktadır.
             </p>
           </div>
           <div>

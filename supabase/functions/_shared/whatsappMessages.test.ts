@@ -8,10 +8,6 @@ import {
   tomorrowInIstanbul,
   revisitWindowStart,
   pickRevisitTargets,
-  reminderParams,
-  revisitParams,
-  buildTemplateBody,
-  TEMPLATES,
 } from './whatsappMessages'
 import type { VisitRow } from './whatsappMessages'
 
@@ -58,7 +54,7 @@ describe('biçimlendirme', () => {
   it('yalnızca ilk adı Türkçe harf kurallarıyla yazar', () => {
     expect(firstName('  işıl  YILMAZ ')).toBe('İşıl')
     expect(firstName('AHMET')).toBe('Ahmet')
-    expect(firstName('   ')).toBe('Değerli müşterimiz')
+    expect(firstName('   ')).toBe('')
   })
 })
 
@@ -106,24 +102,5 @@ describe('pickRevisitTargets (20 gün bakım daveti)', () => {
     const sent = visit({ appointment_date: daysAgo(21), whatsapp_revisit_sent_at: '2026-11-20T18:00:00Z' })
     expect(pickRevisitTargets([sent], [], TODAY)).toHaveLength(0)
     expect(pickRevisitTargets([visit({ appointment_date: daysAgo(20) })], ['0532 123 45 67'], TODAY)).toHaveLength(0)
-  })
-})
-
-describe('şablon değişkenleri', () => {
-  it('hatırlatma: ilk ad, tarih, saat', () => {
-    const appointment = { customer_name: 'İlkay  Yılmaz', appointment_date: '2026-11-20', appointment_time: '14:30:00' }
-    expect(reminderParams(appointment)).toEqual(['İlkay', '20 Kasım Cuma', '14:30'])
-  })
-
-  it('bakım daveti: ilk ad', () => {
-    expect(revisitParams('mehmet ali kaya')).toEqual(['Mehmet'])
-  })
-
-  it('Cloud API gövdesi', () => {
-    const body = buildTemplateBody('0532 123 45 67', TEMPLATES.revisit, ['A', 'B'])
-    expect(body.to).toBe('905321234567')
-    expect(body.template.name).toBe('bakim_hatirlatma')
-    expect(body.template.language.code).toBe('tr')
-    expect(body.template.components[0]?.parameters).toEqual([{ type: 'text', text: 'A' }, { type: 'text', text: 'B' }])
   })
 })

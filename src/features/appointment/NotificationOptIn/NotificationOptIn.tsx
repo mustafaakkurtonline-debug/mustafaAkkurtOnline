@@ -73,7 +73,7 @@ export function NotificationOptIn({ phone, appointmentId = null, variant }: Noti
           </div>
           <div>
             <p className="text-gray-900 text-sm font-semibold">Bildirimleri açın</p>
-            <p className="text-gray-500 text-sm mt-0.5">Yeni randevu zamanınız geldiğinde size bildirimle hatırlatalım.</p>
+            <p className="text-gray-500 text-sm mt-0.5">Randevunuzdan bir gün önce ve yeni randevu zamanınız geldiğinde size bildirimle hatırlatalım.</p>
           </div>
         </div>
         {errorText}

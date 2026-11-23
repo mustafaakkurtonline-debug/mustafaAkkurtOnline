@@ -5,43 +5,28 @@ import {
   tomorrowInIstanbul,
   revisitWindowStart,
   pickRevisitTargets,
-  reminderParams,
-  revisitParams,
   toE164,
   toLocalPhone,
   ACTIVE_STATUSES,
   VISIT_STATUSES,
-  TEMPLATES,
 } from '../_shared/whatsappMessages.ts'
 import type { VisitRow } from '../_shared/whatsappMessages.ts'
-import { revisitPushPayload } from '../_shared/pushMessages.ts'
+import { reminderPushPayload, revisitPushPayload } from '../_shared/pushMessages.ts'
+import type { PushPayload, ReminderAppointment } from '../_shared/pushMessages.ts'
 import { pushToSubscriptions } from '../_shared/webPush.ts'
 import type { PushDelivery, PushSubscriptionKeys } from '../_shared/webPush.ts'
-import { sendTemplate, logMessage, isAuthorized, isWhatsAppConfigured, json } from '../_shared/whatsappClient.ts'
-import type { SendResult } from '../_shared/whatsappClient.ts'
+import { logMessage, isAuthorized, json } from '../_shared/whatsappClient.ts'
+import type { MessageKind, SendResult } from '../_shared/whatsappClient.ts'
 
-// Bildirim aboneliği olmayan müşterilere bakım davetinin WhatsApp ile gitmesi:
-// "bakim_hatirlatma" şablonu Meta'da onaylanınca bu secret "true" yapılarak açılır.
-// Bildirimle (web push, ücretsiz) giden davet bu secret'tan bağımsızdır.
-const REVISIT_ENABLED_SECRET = 'WHATSAPP_REVISIT_ENABLED'
-
-// 21:00'de gönderilen davet, telefon o an kapalıysa ertesi sabaha kadar teslim edilebilir
-const REVISIT_PUSH_TTL_SECONDS = 43_200
+// 21:00'de gönderilen bildirim, telefon o an kapalıysa ertesi sabaha kadar teslim edilebilir
+const PUSH_TTL_SECONDS = 43_200
 
 // Test modunda gönderilen örnekler (veritabanına dokunulmaz)
 const TEST_NAME = 'Test'
 const TEST_TIME = '10:00:00'
-// ?channel=push: yalnızca örnek davet bildirimi (WhatsApp gönderilmez)
-const TEST_CHANNEL_PUSH = 'push'
 
-const PUSH_SENT: SendResult = { ok: true, messageId: null, error: null }
-
-interface ReminderRow {
-  id: string
-  customer_name: string
+interface ReminderRow extends ReminderAppointment {
   customer_phone: string
-  appointment_date: string
-  appointment_time: string
 }
 
 interface SubscriptionRow extends PushSubscriptionKeys {
@@ -49,41 +34,38 @@ interface SubscriptionRow extends PushSubscriptionKeys {
 }
 
 interface Tally {
-  sent: number
-  failed: number
-}
-
-interface RevisitTally {
-  // Ücretsiz bildirimle gönderilen
+  // Bildirimi en az bir cihazına ulaşan müşteri
   push: number
-  // WhatsApp şablonuyla gönderilen
-  whatsapp: number
+  // Cihazı var ama bildirim hiçbirine ulaşmadı
   failed: number
-  // Bildirim aboneliği yok ve WhatsApp daveti kapalı
+  // Bildirimleri açık değil (kayıtlı cihazı yok)
   skipped: number
 }
 
+// Bir randevu için gönderilecek bildirim
+interface PushJob {
+  appointmentId: string
+  customerPhone: string
+  kind: MessageKind
+  payload: PushPayload
+}
+
 // ---------------------------------------------------------------------------
-// cron-job.org her gün 21:00 (Europe/Istanbul) tetikler:
-// 1. Yarınki aktif randevulara WhatsApp "randevu_hatirlatma"
-// 2. Son randevusunun üzerinden 20 gün geçen müşterilere bakım daveti:
-//    bildirim aboneliği varsa web push (ücretsiz); yoksa, WHATSAPP_REVISIT_ENABLED=true
-//    ise WhatsApp "bakim_hatirlatma"
-// Gönderilenler işaretlenir; iş tekrar çalışırsa aynı mesaj ikinci kez gitmez.
-// WhatsApp hesabı bağlı değilse (WHATSAPP_TOKEN yok) WhatsApp adımları atlanır.
+// Supabase Cron her gün 21:00 (Europe/Istanbul) çağırır (migration 020).
+// Yalnızca bildirimi açmış müşterilere (customer_push_subscriptions) gider:
+// 1. Yarınki aktif randevulara hatırlatma bildirimi
+// 2. Son randevusunun üzerinden 20 gün geçen müşterilere davet bildirimi
+// Gönderilenler işaretlenir; iş tekrar çalışırsa aynı bildirim ikinci kez gitmez.
+// (Fonksiyon adı WhatsApp döneminden kalma; WhatsApp iptal edildi.)
 //
-// Test: ?test_phone=05XXXXXXXXX → yalnızca o numaraya örnek WhatsApp mesaj(lar)ı.
-//       ?test_phone=05XXXXXXXXX&channel=push → yalnızca o numaranın cihazlarına
-//       örnek davet bildirimi.
+// Test: ?test_phone=05XXXXXXXXX → yalnızca o numaranın cihazlarına örnek
+//       hatırlatma ve davet bildirimi; hiçbir kayıt yazılmaz.
 // ---------------------------------------------------------------------------
 Deno.serve(async (req: Request) => {
   if (!isAuthorized(req)) return new Response('Unauthorized', { status: 401 })
 
   const now = new Date()
-  const whatsappConfigured = isWhatsAppConfigured()
-  const whatsappRevisitEnabled = whatsappConfigured && Deno.env.get(REVISIT_ENABLED_SECRET) === 'true'
-  const params = new URL(req.url).searchParams
-  const testPhone = params.get('test_phone')
+  const testPhone = new URL(req.url).searchParams.get('test_phone')
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -91,49 +73,34 @@ Deno.serve(async (req: Request) => {
   )
 
   try {
-    if (testPhone) {
-      return params.get('channel') === TEST_CHANNEL_PUSH
-        ? await sendTestPush(supabase, testPhone)
-        : await sendTestMessages(testPhone, now, whatsappRevisitEnabled)
-    }
+    if (testPhone) return await sendTestPushes(supabase, testPhone, now)
 
-    const reminders = whatsappConfigured ? await sendReminders(supabase, now) : 'whatsapp_not_configured'
-    const revisits = await sendRevisits(supabase, now, whatsappRevisitEnabled)
+    const reminders = await sendReminders(supabase, now)
+    const revisits = await sendRevisits(supabase, now)
     return json({ reminders, revisits })
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : String(err) }, 500)
   }
 })
 
-async function sendTestMessages(phone: string, now: Date, revisitEnabled: boolean): Promise<Response> {
-  const reminder = await sendTemplate(phone, TEMPLATES.reminder, reminderParams({
-    customer_name: TEST_NAME,
-    appointment_date: tomorrowInIstanbul(now),
-    appointment_time: TEST_TIME,
-  }))
-  if (!revisitEnabled) {
-    return json({ test: true, reminder: summarize(reminder), revisit: 'disabled' }, reminder.ok ? 200 : 502)
-  }
-
-  const revisit = await sendTemplate(phone, TEMPLATES.revisit, revisitParams(TEST_NAME))
-  const ok = reminder.ok && revisit.ok
-  return json({ test: true, reminder: summarize(reminder), revisit: summarize(revisit) }, ok ? 200 : 502)
-}
-
 // Süresi dolmuş abonelik de silinmez: test hiçbir kayda dokunmaz
-async function sendTestPush(supabase: SupabaseClient, phone: string): Promise<Response> {
+async function sendTestPushes(supabase: SupabaseClient, phone: string, now: Date): Promise<Response> {
   const devicesByPhone = await loadPushSubscriptions(supabase, [phone])
   const devices = devicesByPhone.get(toE164(phone)) ?? []
   if (devices.length === 0) {
     return json({ test: true, push: 'Bu numaraya kayıtlı bildirim aboneliği yok' }, 404)
   }
 
-  const delivery = await pushToSubscriptions(devices, JSON.stringify(revisitPushPayload(TEST_NAME)), REVISIT_PUSH_TTL_SECONDS)
-  return json({ test: true, devices: devices.length, push: delivery }, delivery.delivered > 0 ? 200 : 502)
-}
-
-function summarize({ ok, error }: SendResult): { ok: boolean; error: string | null } {
-  return { ok, error }
+  const sample: ReminderAppointment = {
+    id: 'test',
+    customer_name: TEST_NAME,
+    appointment_date: tomorrowInIstanbul(now),
+    appointment_time: TEST_TIME,
+  }
+  const reminder = await pushToSubscriptions(devices, JSON.stringify(reminderPushPayload(sample)), PUSH_TTL_SECONDS)
+  const revisit = await pushToSubscriptions(devices, JSON.stringify(revisitPushPayload(TEST_NAME)), PUSH_TTL_SECONDS)
+  const ok = reminder.delivered > 0 && revisit.delivered > 0
+  return json({ test: true, devices: devices.length, reminder, revisit }, ok ? 200 : 502)
 }
 
 async function sendReminders(supabase: SupabaseClient, now: Date): Promise<Tally> {
@@ -146,25 +113,19 @@ async function sendReminders(supabase: SupabaseClient, now: Date): Promise<Tally
     .order('appointment_time')
   if (error) throw new Error(`Hatırlatma listesi okunamadı: ${error.message}`)
 
-  const tally: Tally = { sent: 0, failed: 0 }
-  for (const row of (data ?? []) as ReminderRow[]) {
-    const result = await sendTemplate(row.customer_phone, TEMPLATES.reminder, reminderParams(row))
-    await logMessage(supabase, { appointmentId: row.id, kind: 'reminder', customerPhone: row.customer_phone, result })
-
-    if (result.ok) {
-      tally.sent++
-      await supabase.from('appointments').update({ whatsapp_reminder_sent_at: new Date().toISOString() }).eq('id', row.id)
-    } else {
-      tally.failed++
-    }
-  }
-  return tally
+  const jobs = ((data ?? []) as ReminderRow[]).map((row): PushJob => ({
+    appointmentId: row.id,
+    customerPhone: row.customer_phone,
+    kind: 'reminder',
+    payload: reminderPushPayload(row),
+  }))
+  // Sütun adı WhatsApp döneminden kalma: "hatırlatma gönderildi"
+  return sendPushJobs(supabase, jobs, 'whatsapp_reminder_sent_at')
 }
 
-// Bakım daveti: bildirim aboneliği olana ücretsiz bildirim; aboneliği olmayana
-// ya da bildirimi hiçbir cihazına ulaşmayana, WhatsApp açıksa şablon mesajı.
-// Gönderilemeyen davet işaretlenmez; telafi süresi içinde ertesi gün yeniden denenir.
-async function sendRevisits(supabase: SupabaseClient, now: Date, whatsappEnabled: boolean): Promise<RevisitTally> {
+// Davet: son randevudan 20 gün sonra. Gönderilemeyen davet işaretlenmez;
+// telafi süresi içinde ertesi gün yeniden denenir.
+async function sendRevisits(supabase: SupabaseClient, now: Date): Promise<Tally> {
   const today = istanbulDate(now)
 
   const [visits, bans] = await Promise.all([
@@ -182,48 +143,46 @@ async function sendRevisits(supabase: SupabaseClient, now: Date, whatsappEnabled
   if (bans.error) throw new Error(`Yasaklı listesi okunamadı: ${bans.error.message}`)
 
   const bannedPhones = (bans.data ?? []).map((ban: { customer_phone: string }) => ban.customer_phone)
-  const targets = pickRevisitTargets((visits.data ?? []) as VisitRow[], bannedPhones, today)
-  const devicesByPhone = await loadPushSubscriptions(supabase, targets.map(row => row.customer_phone))
+  const jobs = pickRevisitTargets((visits.data ?? []) as VisitRow[], bannedPhones, today).map((row): PushJob => ({
+    appointmentId: row.id,
+    customerPhone: row.customer_phone,
+    kind: 'revisit',
+    payload: revisitPushPayload(row.customer_name),
+  }))
+  // Sütun adı WhatsApp döneminden kalma: "davet gönderildi"
+  return sendPushJobs(supabase, jobs, 'whatsapp_revisit_sent_at')
+}
 
-  const tally: RevisitTally = { push: 0, whatsapp: 0, failed: 0, skipped: 0 }
+// Her bildirimi müşterinin bütün cihazlarına gönderir, kaydeder ve en az bir
+// cihaza ulaştıysa randevuyu işaretler. Cihazı olmayan müşteri atlanır.
+async function sendPushJobs(
+  supabase: SupabaseClient,
+  jobs: PushJob[],
+  sentColumn: 'whatsapp_reminder_sent_at' | 'whatsapp_revisit_sent_at',
+): Promise<Tally> {
+  const devicesByPhone = await loadPushSubscriptions(supabase, jobs.map(job => job.customerPhone))
+  const tally: Tally = { push: 0, failed: 0, skipped: 0 }
   const expiredEndpoints: string[] = []
 
-  for (const row of targets) {
-    const devices = devicesByPhone.get(toE164(row.customer_phone)) ?? []
-
-    if (devices.length > 0) {
-      const delivery = await pushToSubscriptions(
-        devices,
-        JSON.stringify(revisitPushPayload(row.customer_name)),
-        REVISIT_PUSH_TTL_SECONDS,
-      )
-      expiredEndpoints.push(...delivery.expiredEndpoints)
-      await logMessage(supabase, {
-        appointmentId: row.id,
-        kind: 'revisit',
-        channel: 'push',
-        customerPhone: row.customer_phone,
-        result: toSendResult(delivery),
-      })
-      if (delivery.delivered > 0) {
-        tally.push++
-        await markRevisitSent(supabase, row.id)
-        continue
-      }
-    }
-
-    if (!whatsappEnabled) {
-      if (devices.length > 0) tally.failed++
-      else tally.skipped++
+  for (const job of jobs) {
+    const devices = devicesByPhone.get(toE164(job.customerPhone)) ?? []
+    if (devices.length === 0) {
+      tally.skipped++
       continue
     }
 
-    const result = await sendTemplate(row.customer_phone, TEMPLATES.revisit, revisitParams(row.customer_name))
-    await logMessage(supabase, { appointmentId: row.id, kind: 'revisit', channel: 'whatsapp', customerPhone: row.customer_phone, result })
+    const delivery = await pushToSubscriptions(devices, JSON.stringify(job.payload), PUSH_TTL_SECONDS)
+    expiredEndpoints.push(...delivery.expiredEndpoints)
+    await logMessage(supabase, {
+      appointmentId: job.appointmentId,
+      kind: job.kind,
+      customerPhone: job.customerPhone,
+      result: toSendResult(delivery),
+    })
 
-    if (result.ok) {
-      tally.whatsapp++
-      await markRevisitSent(supabase, row.id)
+    if (delivery.delivered > 0) {
+      tally.push++
+      await supabase.from('appointments').update({ [sentColumn]: new Date().toISOString() }).eq('id', job.appointmentId)
     } else {
       tally.failed++
     }
@@ -255,17 +214,11 @@ async function loadPushSubscriptions(
 }
 
 function toSendResult({ delivered, failed, expiredEndpoints }: PushDelivery): SendResult {
-  if (delivered > 0) return PUSH_SENT
+  if (delivered > 0) return { ok: true, error: null }
   return {
     ok: false,
-    messageId: null,
     error: `Bildirim hiçbir cihaza ulaşmadı (hata: ${failed}, süresi dolmuş: ${expiredEndpoints.length})`,
   }
-}
-
-// Kanal fark etmeksizin "davet gönderildi" işareti (sütun adı WhatsApp döneminden kalma)
-async function markRevisitSent(supabase: SupabaseClient, appointmentId: string): Promise<void> {
-  await supabase.from('appointments').update({ whatsapp_revisit_sent_at: new Date().toISOString() }).eq('id', appointmentId)
 }
 
 // Push servisinin geçersiz dediği cihaz, bağlı olduğu bütün numaralardan silinir

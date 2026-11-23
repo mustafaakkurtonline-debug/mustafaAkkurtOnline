@@ -1,18 +1,7 @@
-// WhatsApp otomatik mesajlarının saf (yan etkisiz) kuralları.
+// Günlük hatırlatma ve davet işinin (whatsapp-reminders) saf (yan etkisiz) kuralları.
 // Deno'ya özgü hiçbir şey kullanmaz; böylece vitest ile test edilebilir
-// (whatsappMessages.test.ts). Gönderme işi whatsappClient.ts'te.
-
-// Meta'da onaylatılan şablon adları (Türkçe)
-export const TEMPLATES = {
-  // Utility: yarınki randevunun hatırlatması
-  reminder: 'randevu_hatirlatma',
-  // Marketing: son randevudan 20 gün sonra bakım daveti
-  revisit: 'bakim_hatirlatma',
-} as const
-
-export type TemplateName = typeof TEMPLATES[keyof typeof TEMPLATES]
-
-export const TEMPLATE_LANGUAGE = 'tr'
+// (whatsappMessages.test.ts). Dosya adı WhatsApp döneminden kalma; mesajlar
+// artık yalnızca bildirimle (web push) gider.
 
 // Bakım daveti, son randevunun üzerinden bu kadar gün geçince gider
 export const REVISIT_AFTER_DAYS = 20
@@ -30,14 +19,6 @@ const LOCALE = 'tr-TR'
 const TURKEY_COUNTRY_CODE = '90'
 const HH_MM_LENGTH = 5
 const MS_PER_DAY = 86_400_000
-// Kayıtta ad yoksa (Meta boş değişken kabul etmez)
-const FALLBACK_FIRST_NAME = 'Değerli müşterimiz'
-
-export interface ReminderAppointment {
-  customer_name: string
-  appointment_date: string
-  appointment_time: string
-}
 
 export interface VisitRow {
   id: string
@@ -62,11 +43,10 @@ export function toLocalPhone(rawPhone: string): string {
   return '0' + toE164(rawPhone).slice(TURKEY_COUNTRY_CODE.length)
 }
 
-// "  işıl  YILMAZ" → "İşıl" (src/utils/formatName.ts ile aynı kural;
+// "  işıl  YILMAZ" → "İşıl", ad yoksa "" (src/utils/formatName.ts ile aynı kural;
 // Edge Function src/ klasörünü içe aktaramadığı için burada da var)
 export function firstName(fullName: string): string {
   const first = fullName.trim().split(/\s+/)[0] ?? ''
-  if (!first) return FALLBACK_FIRST_NAME
   return first.charAt(0).toLocaleUpperCase(LOCALE) + first.slice(1).toLocaleLowerCase(LOCALE)
 }
 
@@ -132,39 +112,4 @@ export function pickRevisitTargets(rows: VisitRow[], bannedPhones: string[], tod
       !banned.has(phone),
     )
     .map(([, row]) => row)
-}
-
-// Meta, şablon değişkenlerinde satır sonu ve art arda çok boşluk kabul etmez
-function cleanParam(value: string): string {
-  return value.replace(/\s+/g, ' ').trim()
-}
-
-// {{1}} ilk ad, {{2}} tarih, {{3}} saat
-export function reminderParams(appointment: ReminderAppointment): string[] {
-  return [
-    firstName(appointment.customer_name),
-    formatDateTr(appointment.appointment_date),
-    formatTimeTr(appointment.appointment_time),
-  ].map(cleanParam)
-}
-
-// {{1}} ilk ad
-export function revisitParams(customerName: string): string[] {
-  return [firstName(customerName)].map(cleanParam)
-}
-
-// WhatsApp Cloud API "template" mesaj gövdesi
-export function buildTemplateBody(rawPhone: string, template: TemplateName, params: string[]) {
-  return {
-    messaging_product: 'whatsapp',
-    to: toE164(rawPhone),
-    type: 'template',
-    template: {
-      name: template,
-      language: { code: TEMPLATE_LANGUAGE },
-      components: [
-        { type: 'body', parameters: params.map(text => ({ type: 'text', text })) },
-      ],
-    },
-  }
 }
